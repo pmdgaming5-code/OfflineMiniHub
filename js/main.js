@@ -1,17 +1,16 @@
 'use strict';
 let lastGameId=null;
-
 function showOnly(screenId){
   ['screen-menu','screen-chars','screen-games','screen-howto','screen-over','screen-shop']
     .forEach(id=>$(id).classList.add('hidden'));
-  if(screenId)$(screenId).classList.remove('hidden');
+  if(screenId) $(screenId).classList.remove('hidden');
 }
 function startGameById(id){
   const m=GAMES.find(g=>g.id===id);
-  if(!m)return;
+  if(!m) return;
   lastGameId=id;
   Engine.startGame(m);
-  HUD.toast(m.emoji+' '+m.name,1.4);
+  HUD.toast(m.emoji+' '+m.name, 1.4);
 }
 function buildMenuBg(){
   const bg=$('menu-bg');
@@ -44,7 +43,7 @@ function renderChars(){
         :owned?'<button class="cc-btn">SEÇ</button>'
         :'<button class="cc-btn lock">🪙 '+c.cost+'</button>');
     card.querySelector('button').addEventListener('click',()=>{
-      if(sel)return;
+      if(sel) return;
       if(owned){
         Store.data.char=i;Store.save();
         Engine.applyChar(i);
@@ -138,7 +137,6 @@ function boot(){
   showOnly('screen-menu');
   Sfx.on=!Store.data.muted;
   $('btn-sound').textContent=Sfx.on?'🔊':'🔇';
-
   $('btn-play').addEventListener('click',()=>{
     Sfx.click();
     Engine.fadeDo(()=>{
@@ -179,7 +177,6 @@ function boot(){
   });
   $('btn-games').addEventListener('click',()=>{Sfx.click();renderGames();showOnly('screen-games');});
   $('btn-shop2').addEventListener('click',()=>{Sfx.click();renderShop();showOnly('screen-shop');});
-
   Events.on('reqGame',id=>{
     Engine.fadeDo(()=>{showOnly(null);startGameById(id);});
   });
