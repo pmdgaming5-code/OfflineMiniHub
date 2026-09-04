@@ -5,30 +5,154 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#14204a">
 <title>BLOX HUB — 18 Mini Oyun</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Titan+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="feature.css">
 </head>
 <body>
+
 <canvas id="game"></canvas>
+<!-- Kamera sürükleme katmanı -->
 <div id="cam-zone"></div>
-<div id="nogl" class="screen hidden"><div class="panel howto"><h2>😵 Three.js yüklenemedi</h2><p>Bu oyun Three.js ile çalışır. APK sürümünde Three.js paket içine gömülür; web için de <b>three.min.js</b> aynı klasörde bulunabilir.</p></div></div>
-<div id="fade"></div><div id="dmgflash"></div>
-<div id="hud" class="hidden"><div id="hud-top"><div class="hud-left"><button id="btn-exit" class="hbtn">✕</button><div id="hud-title" class="chip dark">LOBİ</div><button id="btn-games" class="hbtn lobby-only">🎮 Oyunlar</button><button id="btn-shop2" class="hbtn lobby-only">💎 Market</button></div><div class="hud-right"><div id="hud-hearts" class="chip hidden"></div><div id="hud-stat" class="chip hidden"></div><div id="hud-coins" class="chip gold">🪙 0</div></div></div><div id="bossbar" class="hidden"><div id="bossfill"></div><span id="bossname">👹 BOSS</span></div></div>
-<div id="toast"></div><div id="bigprompt" class="hidden"></div><div id="interact" class="hidden">✋</div>
-<div id="controls" class="hidden"><div id="joy-zone"><div id="joy-base"><div id="joy-thumb"></div></div></div><div id="btn-zone"><button id="btn-act" class="cbtn act">✋</button><button id="btn-jump" class="cbtn jump">⤴</button></div><button id="btn-cam" class="cambtn">🎥</button></div>
-<div id="clickerUI" class="hidden"><div id="clk-top" class="chip dark">💪 <b id="clk-power">0</b> &nbsp;⭐ Sv <b id="clk-lvl">1</b> &nbsp;⏱ <b id="clk-time">60</b></div><div id="clk-shop"><button id="clk-up1" class="shopbtn">GÜÇ x2<small id="clk-up1c">-60 💪</small></button><button id="clk-up2" class="shopbtn">OTO-TIK<small id="clk-up2c">-150 💪</small></button></div><button id="clk-btn">💥</button></div>
-<div id="screen-menu" class="screen hidden"><div id="menu-bg"></div><div id="menu-inner"><div id="logo"><span class="l1">B</span><span class="l2">L</span><span class="l3">O</span><span class="l4">X</span><span class="lsp"></span><span class="l5">H</span><span class="l6">U</span><span class="l7">B</span></div><div id="tagline">18 MİNİ OYUN • TEK LOBİ • ÇEVRİMDIŞI APK</div><div id="menu-avatar"></div><div id="m-coins" class="chip gold big">🪙 0</div><div id="menu-btns"><button id="btn-play" class="mbtn play">▶ OYNA</button><button id="btn-chars" class="mbtn">🧍 KARAKTERİM</button><button id="btn-shop" class="mbtn alt2">💎 MARKET</button><button id="btn-howto" class="mbtn">❓ NASIL OYNANIR</button></div><button id="btn-sound" class="hbtn corner">🔊</button><div id="ticker"></div></div></div>
-<div id="screen-chars" class="screen hidden"><div class="scr-head"><button class="hbtn back" id="btn-cback">◀</button><h2>KARAKTER SEÇ</h2><div id="c-coins" class="chip gold">🪙 0</div></div><div id="char-grid"></div></div>
-<div id="screen-games" class="screen hidden"><div class="scr-head"><button class="hbtn back" id="btn-gback">◀</button><h2>OYUNLAR</h2><div id="g-coins" class="chip gold">🪙 0</div></div><div id="game-grid"></div></div>
-<div id="screen-shop" class="screen hidden"><div class="scr-head"><button class="hbtn back" id="btn-sback">◀</button><h2>💎 PREMIUM MARKET</h2><div id="s-coins" class="chip gold">🪙 0</div></div><div id="shop-grid"></div></div>
-<div id="screen-howto" class="screen hidden"><div class="scr-head"><button class="hbtn back" id="btn-hback">◀</button><h2>NASIL OYNANIR?</h2></div><div class="panel howto"><p>🕹️ <b>Sol alt joystick:</b> hareket &nbsp;<small>(PC: WASD / ok tuşları)</small></p><p>⤴ <b>Sağ alt buton:</b> zıpla &nbsp;<small>(PC: Boşluk)</small></p><p>✋ <b>Eylem butonu:</b> kapı / buton / portal etkileşimi &nbsp;<small>(PC: E)</small></p><p>🪙 Oyunlardan coin kazan, yeni karakterlerin kilidini aç.</p><p>💎 Marketten coin ile kozmetik eşya al ve avatara tak.</p><p>🏅 Her oyunun en iyi skoru otomatik kaydedilir (LocalStorage).</p><p>📴 APK içindeki JavaScript ve Three.js yereldir; internet bağlantısı gerekmez.</p><button id="btn-reset" class="mbtn danger small">🗑 İLERLEMEYİ SIFIRLA</button></div></div>
-<div id="screen-over" class="screen dim hidden"><div id="over-card"><div id="over-emoji">🏆</div><h2 id="over-title">KAZANDIN!</h2><p id="over-msg"></p><div id="over-stats"></div><div id="over-coins">+0 🪙</div><div id="over-btns"><button id="btn-retry" class="mbtn small">🔁 TEKRAR</button><button id="btn-lobby" class="mbtn small alt">🏝️ LOBİYE DÖN</button></div></div></div>
-<script src="three.min.js"></script>
+
+<div id="nogl" class="screen hidden">
+  <div class="panel howto">
+    <h2>😵 Three.js yüklenemedi</h2>
+    <p>Bu oyun Three.js ile çalışır. Tam çevrimdışı kullanım için <b>three.min.js</b> dosyasını bu HTML ile aynı klasöre koy.</p>
+  </div>
+</div>
+
+<div id="fade"></div>
+<div id="dmgflash"></div>
+
+<!-- ============ HUD ============ -->
+<div id="hud" class="hidden">
+  <div id="hud-top">
+    <div class="hud-left">
+      <button id="btn-exit" class="hbtn">✕</button>
+      <div id="hud-title" class="chip dark">LOBİ</div>
+      <button id="btn-games" class="hbtn lobby-only">🎮 Oyunlar</button>
+      <button id="btn-shop2" class="hbtn lobby-only">💎 Market</button>
+    </div>
+    <div class="hud-right">
+      <div id="hud-hearts" class="chip hidden"></div>
+      <div id="hud-stat" class="chip hidden"></div>
+      <div id="hud-coins" class="chip gold">🪙 0</div>
+    </div>
+  </div>
+  <div id="bossbar" class="hidden"><div id="bossfill"></div><span id="bossname">👹 BOSS</span></div>
+</div>
+
+<div id="toast"></div>
+<div id="bigprompt" class="hidden"></div>
+<div id="interact" class="hidden">✋</div>
+
+<!-- ============ MOBİL KONTROLLER ============ -->
+<div id="controls" class="hidden">
+  <div id="joy-zone"><div id="joy-base"><div id="joy-thumb"></div></div></div>
+  <div id="btn-zone">
+    <button id="btn-act" class="cbtn act">✋</button>
+    <button id="btn-jump" class="cbtn jump">⤴</button>
+  </div>
+  <button id="btn-cam" class="cambtn">🎥</button>
+</div>
+
+<!-- ============ CLICKER UI ============ -->
+<div id="clickerUI" class="hidden">
+  <div id="clk-top" class="chip dark">💪 <b id="clk-power">0</b> &nbsp;⭐ Sv <b id="clk-lvl">1</b> &nbsp;⏱ <b id="clk-time">60</b></div>
+  <div id="clk-shop">
+    <button id="clk-up1" class="shopbtn">GÜÇ x2<small id="clk-up1c">-60 💪</small></button>
+    <button id="clk-up2" class="shopbtn">OTO-TIK<small id="clk-up2c">-150 💪</small></button>
+  </div>
+  <button id="clk-btn">💥</button>
+</div>
+
+<!-- ============ ANA MENÜ ============ -->
+<div id="screen-menu" class="screen hidden">
+  <div id="menu-bg"></div>
+  <div id="menu-inner">
+    <div id="logo"><span class="l1">B</span><span class="l2">L</span><span class="l3">O</span><span class="l4">X</span><span class="lsp"></span><span class="l5">H</span><span class="l6">U</span><span class="l7">B</span></div>
+    <div id="tagline">18 MİNİ OYUN • TEK LOBİ • %100 TARAYICIDA</div>
+    <div id="menu-avatar"></div>
+    <div id="m-coins" class="chip gold big">🪙 0</div>
+    <div id="menu-btns">
+      <button id="btn-play" class="mbtn play">▶ OYNA</button>
+      <button id="btn-chars" class="mbtn">🧍 KARAKTERİM</button>
+      <button id="btn-shop" class="mbtn alt2">💎 MARKET</button>
+      <button id="btn-howto" class="mbtn">❓ NASIL OYNANIR</button>
+    </div>
+    <button id="btn-sound" class="hbtn corner">🔊</button>
+    <div id="ticker"></div>
+  </div>
+</div>
+
+<!-- ============ KARAKTER SEÇİMİ ============ -->
+<div id="screen-chars" class="screen hidden">
+  <div class="scr-head">
+    <button class="hbtn back" id="btn-cback">◀</button>
+    <h2>KARAKTER SEÇ</h2>
+    <div id="c-coins" class="chip gold">🪙 0</div>
+  </div>
+  <div id="char-grid"></div>
+</div>
+
+<!-- ============ OYUN KARTLARI ============ -->
+<div id="screen-games" class="screen hidden">
+  <div class="scr-head">
+    <button class="hbtn back" id="btn-gback">◀</button>
+    <h2>OYUNLAR</h2>
+    <div id="g-coins" class="chip gold">🪙 0</div>
+  </div>
+  <div id="game-grid"></div>
+</div>
+
+<!-- ============ NASIL OYNANIR ============ -->
+<div id="screen-howto" class="screen hidden">
+  <div class="scr-head">
+    <button class="hbtn back" id="btn-hback">◀</button>
+    <h2>NASIL OYNANIR?</h2>
+  </div>
+  <div class="panel howto">
+    <p>🕹️ <b>Sol alt joystick:</b> hareket &nbsp;<small>(PC: WASD / ok tuşları)</small></p>
+    <p>⤴ <b>Sağ alt buton:</b> zıpla &nbsp;<small>(PC: Boşluk)</small></p>
+    <p>✋ <b>Eylem butonu:</b> kapı / buton / olta etkileşimi &nbsp;<small>(PC: E)</small></p>
+    <p>🎥 <b>Kamera:</b> Ekranda parmağınla sürükleyerek her açıdan bak. Kamera butonu takip moduna döner. İki parmakla yakınlaş.</p>
+    <p>🪙 Oyunlardan coin kazan, karakter ve market eşyaları aç.</p>
+    <p>🏅 Her oyunun rekoru otomatik kaydedilir.</p>
+    <button id="btn-reset" class="mbtn danger small">🗑 İLERLEMEYİ SIFIRLA</button>
+  </div>
+</div>
+
+<!-- ============ PREMIUM MARKET ============ -->
+<div id="screen-shop" class="screen hidden">
+  <div class="scr-head">
+    <button class="hbtn back" id="btn-sback">◀</button>
+    <h2>💎 PREMIUM MARKET</h2>
+    <div id="s-coins" class="chip gold">🪙 0</div>
+  </div>
+  <div id="shop-grid"></div>
+</div>
+
+<!-- ============ SONUÇ EKRANI ============ -->
+<div id="screen-over" class="screen dim hidden">
+  <div id="over-card">
+    <div id="over-emoji">🏆</div>
+    <h2 id="over-title">KAZANDIN!</h2>
+    <p id="over-msg"></p>
+    <div id="over-stats"></div>
+    <div id="over-coins">+0 🪙</div>
+    <div id="over-btns">
+      <button id="btn-retry" class="mbtn small">🔁 TEKRAR</button>
+      <button id="btn-lobby" class="mbtn small alt">🏝️ LOBİYE DÖN</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script>window.THREE||document.write('<script src="three.min.js"><\/script>');</script>
 <script src="js/core.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/games.js"></script>
-<script src="js/games-extra.js"></script>
-<script src="feature-updates.js"></script>
 <script src="js/main.js"></script>
 </body>
-</html>
+      </html>
