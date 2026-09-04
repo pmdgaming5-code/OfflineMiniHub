@@ -1,0 +1,8 @@
+#cam-zone{position:fixed;inset:0;z-index:5;touch-action:none;pointer-events:auto}
+#btn-cam{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:26;width:52px;height:52px;border-radius:14px;font-size:24px;background:#8a5cf6;color:#fff;border:4px solid var(--ink);box-shadow:0 5px 0 var(--ink);pointer-events:auto}
+#btn-cam:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+#shop-grid{display:grid;gap:14px;padding:calc(64px + env(safe-area-inset-top)) 16px 30px;width:100%;max-width:860px;overflow-y:auto;align-content:start;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.mbtn.alt2{background:#ffb100;color:#10131f}
+.charcard.eq{outline:4px solid var(--gold)}
+.shop-ico{font-size:46px;background:linear-gradient(145deg,#fff6d6,#ffe08a);border:3px solid var(--ink);border-radius:12px;width:100%;padding:10px 0;text-shadow:0 4px 6px #0003}
+.shop-slot{font-size:10px;font-weight:900;color:#7a7f95;letter-spacing:1px}
