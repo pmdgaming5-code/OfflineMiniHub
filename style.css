@@ -187,3 +187,14 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-ac
   #joy-thumb{width:44px;height:44px}
   #clk-btn{width:110px;height:110px}
 }
+.avo{display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 6px 0 #0006)}
+.av-head{width:46px;height:42px;background:var(--skin);border:3px solid var(--ink);border-radius:8px;position:relative}
+.av-eye{position:absolute;top:13px;width:7px;height:11px;background:var(--ink);border-radius:3px}
+.av-eye.l{left:9px}.av-eye.r{right:9px}
+.av-smile{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:16px;height:7px;
+  border:3px solid var(--ink);border-top:none;border-radius:0 0 10px 10px}
+.av-row{display:flex;gap:3px;margin-top:2px}
+.av-arm{width:12px;height:34px;background:var(--skin);border:3px solid var(--ink);border-radius:5px}
+.av-torso{width:38px;height:34px;background:var(--shirt);border:3px solid var(--ink);border-radius:5px}
+.av-row2{display:flex;gap:4px;margin-top:2px}
+.av-leg{width:16px;height:26px;background:var(--pants);border:3px solid var(--ink);border-radius:5px}
