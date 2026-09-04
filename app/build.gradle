@@ -1,0 +1,48 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.pmdgaming5.offlineminihub'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.pmdgaming5.offlineminihub'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main.assets.srcDirs = ['src/main/assets']
+    }
+}
+
+tasks.register('downloadThreeJs') {
+    doLast {
+        def out = file('src/main/assets/three.min.js')
+        if (!out.exists() || out.length() < 100000) {
+            out.parentFile.mkdirs()
+            new URL('https://raw.githubusercontent.com/mrdoob/three.js/r128/build/three.min.js').withInputStream { input ->
+                out.withOutputStream { output -> output << input }
+            }
+        }
+        if (!out.exists() || out.length() < 100000) {
+            throw new GradleException('three.min.js could not be prepared')
+        }
+    }
+}
+
+tasks.named('preBuild').configure { dependsOn 'downloadThreeJs' }
