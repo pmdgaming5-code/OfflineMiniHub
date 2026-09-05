@@ -1,6 +1,7 @@
 /* ============================================================
    engine.js — Motor: Roblox tarzı grafikler, fizik, giriş,
    kamera, HUD, FX, BOTLAR + kozmetik/market entegrasyonu
+   + BOT SOHBET SİSTEMİ
    ============================================================ */
 'use strict';
 
@@ -134,6 +135,121 @@ function bindCamera(){
   });
 }
 
+/* ============================================================
+   BOT SOHBET SİSTEMİ
+   ============================================================ */
+const BotChat = {
+  messages: {
+    lobby: [
+      'Merhaba! 👋','Bu lobi harika! 🏝️','Kim benimle oynar? 🎮',
+      'Coin topluyorum! 🪙','Marketten eşya aldım! 💎','Hadi yarışalım! 🏃',
+      'Portalları deneyelim! 🌀','Bu oyun çok eğlenceli! 🎉'
+    ],
+    game: [
+      'Dikkat et! ⚠️','Zıpla! ⤴','Hızlı ol! 💨','Beni takip et! 👉',
+      'Vay canına! 😮','Harika! 🌟','Neredeyse bitirdim! 🏁','Çok yakın! 😅',
+      'Bir daha deneyelim! 🔄','Süper! 🔥','Altın buldum! 💰','Kaç! 🏃‍♂️'
+    ],
+    win: [
+      'Tebrikler! 🎉','Helal olsun! 👏','Şampiyon! 🏆','İnanılmaz! 🤩'
+    ],
+    lose: [
+      'Bir daha dene! 💪','Olsun, olur! 😊','Pes etme! 🌟','Tekrar! 🔄'
+    ]
+  },
+  activeBubbles: [],
+  sayRandom(bot, category){
+    category = category || 'lobby';
+    const msgs = this.messages[category] || this.messages.lobby;
+    const msg = U.choice(msgs);
+    this.showBubble(bot, msg);
+  },
+  showBubble(bot, msg){
+    if(!bot || !bot.grp || !bot.grp.parent) return;
+    
+    // Eski balonları temizle (max 5)
+    if(this.activeBubbles.length >= 5){
+      const old = this.activeBubbles.shift();
+      if(old.sprite && old.sprite.parent) old.sprite.parent.remove(old.sprite);
+      if(old.tex) old.tex.dispose();
+    }
+    
+    const cv=document.createElement('canvas');
+    cv.width=256; cv.height=80;
+    const g=cv.getContext('2d');
+    
+    // Balon arka planı
+    g.fillStyle='rgba(255,255,255,0.95)';
+    g.beginPath();
+    g.moveTo(12,0);
+    g.lineTo(244,0);
+    g.quadraticCurveTo(256,0,256,12);
+    g.lineTo(256,58);
+    g.quadraticCurveTo(256,70,244,70);
+    g.lineTo(140,70);
+    g.lineTo(128,80);
+    g.lineTo(116,70);
+    g.lineTo(12,70);
+    g.quadraticCurveTo(0,70,0,58);
+    g.lineTo(0,12);
+    g.quadraticCurveTo(0,0,12,0);
+    g.fill();
+    
+    // Kenarlık
+    g.strokeStyle='#10131f';
+    g.lineWidth=3;
+    g.stroke();
+    
+    // Metin
+    g.fillStyle='#10131f';
+    g.font='bold 22px Arial, sans-serif';
+    g.textAlign='center';
+    g.textBaseline='middle';
+    
+    // Uzun metni kısalt
+    let displayMsg = msg;
+    if(g.measureText(msg).width > 230){
+      while(g.measureText(displayMsg+'...').width > 230 && displayMsg.length > 0){
+        displayMsg = displayMsg.slice(0,-1);
+      }
+      displayMsg += '...';
+    }
+    g.fillText(displayMsg, 128, 35);
+    
+    const tex=new THREE.CanvasTexture(cv);
+    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:tex, transparent:true, depthWrite:false
+    }));
+    sprite.scale.set(2.2, 0.7, 1);
+    sprite.renderOrder = 999;
+    
+    // Botun üstüne ekle
+    bot.grp.add(sprite);
+    sprite.position.set(0, 2.6, 0);
+    
+    this.activeBubbles.push({sprite: sprite, tex: tex, bot: bot, startTime: Engine.time});
+    
+    // 3.5 saniye sonra kaldır
+    const self = this;
+    setTimeout(()=>{
+      self.removeBubble(sprite, tex);
+    }, 3500);
+  },
+  removeBubble(sprite, tex){
+    if(sprite && sprite.parent) sprite.parent.remove(sprite);
+    if(tex) tex.dispose();
+    const idx = this.activeBubbles.findIndex(b=>b.sprite===sprite);
+    if(idx>=0) this.activeBubbles.splice(idx,1);
+  },
+  clearAll(){
+    this.activeBubbles.forEach(b=>{
+      if(b.sprite && b.sprite.parent) b.sprite.parent.remove(b.sprite);
+      if(b.tex) b.tex.dispose();
+    });
+    this.activeBubbles.length=0;
+  }
+};
+
 const FX = {
   parts:[], floats:[], customs:[],
   burst(x,y,z,color,n,spd,life){
@@ -257,6 +373,8 @@ const W = {
     horizon=horizon||top;
     Engine.scene.background=new THREE.Color(horizon);
     Engine.scene.fog=new THREE.Fog(new THREE.Color(horizon), near, far);
+    // FIX: Set clear color to match horizon to prevent black flash
+    Engine.renderer.setClearColor(new THREE.Color(horizon));
     Engine.buildSkyDome(top,horizon);
     if(withSun) Engine.buildSun();
   },
@@ -291,6 +409,7 @@ const W = {
   },
   clear(){
     Engine.runCleanups();
+    BotChat.clearAll();
     Bots.clear();
     Engine.colliders.length=0; Engine.movers.length=0; Engine.interact.length=0;
     Engine.items.forEach(o=>Engine.scene.remove(o)); Engine.items.length=0;
@@ -314,6 +433,7 @@ const Engine = {
   fxHalo:null, fxAura:null, toolObj:null, _tool:null,
   pet:null,
   camYaw:0, camPitch:0.35, camDist:9, camMode:0, followYaw:0,
+  botChatTimer:3,
 
   MAT(c){ if(!this._matC[c]) this._matC[c]=new THREE.MeshLambertMaterial({color:c}); return this._matC[c]; },
   MATB(c){ if(!this._matB[c]) this._matB[c]=new THREE.MeshBasicMaterial({color:c}); return this._matB[c]; },
@@ -579,13 +699,16 @@ const Engine = {
     this.canvas=canvas;
     this.renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:false,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+    // FIX: Enable auto clear and set initial clear color
+    this.renderer.autoClear=true;
+    this.renderer.setClearColor(0x87ceeb);
     this.scene=new THREE.Scene();
     this.camera=new THREE.PerspectiveCamera(60,1,0.1,300);
     this.scene.add(new THREE.HemisphereLight(0xffffff,0x8fa3c7,1.05));
     const dl=new THREE.DirectionalLight(0xfff2d6,0.75);
     dl.position.set(12,24,10); this.scene.add(dl);
 
-    this.GEO={ box:new THREE.BoxGeometry(1,1,1), bit:new THREE.BoxGeometry(0.17,0.17,0.17) };
+    this.GEO={ box:new THREE.BoxGeometry(1,1,1), bit:new THREE.BoxGeometry(THREE.BoxGeometry)(0.17,0.17,0.17) };
     this._matC={}; this._matB={}; this._studTex={}; this._studMat={};
 
     this.player={
@@ -630,7 +753,10 @@ const Engine = {
     this.checkTriggers();
     if(this.playerOn && this.player.pos.y < W.killY) this.handleFall();
     this.updateInteract();
-    if(!this.idle) Bots.update(dt);
+    if(!this.idle){
+      Bots.update(dt);
+      this.updateBotChat(dt);
+    }
     FX.update(dt);
     this.updateTrail(dt);
     this.updateAvatar(dt);
@@ -641,6 +767,19 @@ const Engine = {
       const sh=this.updateCamera(dt);
       this.renderer.render(this.scene,this.camera);
       if(sh) this.camera.position.sub(sh);
+    }
+  },
+
+  updateBotChat(dt){
+    this.botChatTimer-=dt;
+    if(this.botChatTimer<=0){
+      this.botChatTimer=U.rand(4,9);
+      const aliveBots=Bots.all.filter(b=>!b.dead && b.grp && b.grp.parent);
+      if(aliveBots.length>0){
+        const bot=U.choice(aliveBots);
+        const category = this.mode==='game' ? 'game' : 'lobby';
+        BotChat.sayRandom(bot, category);
+      }
     }
   },
 
@@ -918,15 +1057,27 @@ const Engine = {
   },
   shake(m){ this.shakeT=0.4; this.shakeM=m; },
   hurtFx(){ const el=$('dmgflash'); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); },
+  
+  // FIX: Completely rewritten fadeDo to prevent freezing
   fadeDo(cb){
-    const f=$('fade'); f.classList.add('on');
+    const f=$('fade');
+    // Immediately set opacity to 1 without transition issues
+    f.style.transition='none';
+    f.classList.add('on');
+    // Force reflow to apply immediate style
+    void f.offsetWidth;
+    f.style.transition='opacity .08s';
+    
     setTimeout(()=>{
       cb();
-      // FIX: Force render after callback to prevent "frozen" canvas
+      // FIX: Clear WebGL buffer before render to prevent artifacts
       if(this.renderer && this.scene && this.camera){
+        this.renderer.clear();
         this.renderer.render(this.scene, this.camera);
       }
-      setTimeout(()=>f.classList.remove('on'),80);
+      setTimeout(()=>{
+        f.classList.remove('on');
+      },100);
     },230);
   },
 
@@ -1043,6 +1194,7 @@ const Engine = {
     };
   },
 
+  // FIX: Added renderer.clear() to prevent frozen canvas
   startGame(meta){
     if(!meta) return;
     this.runId++;
@@ -1067,10 +1219,12 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
-    // FIX: Force render to prevent "frozen" canvas
+    // FIX: Clear WebGL buffer and force render
+    this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
   },
 
+  // FIX: Added renderer.clear() to prevent frozen canvas
   toLobby(){
     this.finished=false; this.gameUpdate=null; this.onFallCb=null;
     this.noMove=false; this.inputLock=false;
@@ -1091,7 +1245,8 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
-    // FIX: Force render to prevent "frozen" canvas
+    // FIX: Clear WebGL buffer and force render
+    this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
   },
 
@@ -1103,6 +1258,7 @@ const Engine = {
     this.playerGroup.visible=false;
   },
 
+  // FIX: Added renderer.clear() to prevent frozen canvas
   enterLobby(){
     this.idle=false; this.inputLock=false;
     this.playerGroup.visible=true;
@@ -1119,7 +1275,8 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
-    // FIX: Force render to prevent "frozen" canvas
+    // FIX: Clear WebGL buffer and force render
+    this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
   },
 
