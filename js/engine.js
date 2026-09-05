@@ -699,7 +699,6 @@ const Engine = {
     this.canvas=canvas;
     this.renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:false,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
-    // FIX: Enable auto clear and set initial clear color
     this.renderer.autoClear=true;
     this.renderer.setClearColor(0x87ceeb);
     this.scene=new THREE.Scene();
@@ -708,7 +707,11 @@ const Engine = {
     const dl=new THREE.DirectionalLight(0xfff2d6,0.75);
     dl.position.set(12,24,10); this.scene.add(dl);
 
-    this.GEO={ box:new THREE.BoxGeometry(1,1,1), bit:new THREE.BoxGeometry(THREE.BoxGeometry)(0.17,0.17,0.17) };
+    // ✅ DÜZELTİLDİ: Parantez hatası giderildi
+    this.GEO={ 
+      box: new THREE.BoxGeometry(1,1,1), 
+      bit: new THREE.BoxGeometry(0.17,0.17,0.17) 
+    };
     this._matC={}; this._matB={}; this._studTex={}; this._studMat={};
 
     this.player={
