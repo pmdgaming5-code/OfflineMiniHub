@@ -1,7 +1,6 @@
 /* ============================================================
-   engine.js — Motor: Roblox tarzı grafikler, fizik, giriş,
-   kamera, HUD, FX, BOTLAR + kozmetik/market entegrasyonu
-   + BOT SOHBET SİSTEMİ
+   engine.js — Three.js motor: fizik, kamera, render, botlar,
+   kozmetik, FX, HUD. (Başlatma main.js tarafından yapılır)
    ============================================================ */
 'use strict';
 
@@ -15,6 +14,7 @@ function lerpAngle(a,b,t){
   return a+d*t;
 }
 
+/* ─── GİRİŞ (klavye + joystick) ─── */
 const keys = {};
 const Input = {
   jx:0, jf:0, btnJump:false, btnAct:false,
@@ -72,6 +72,7 @@ function bindInput(){
   zone.addEventListener('pointercancel', joyEnd);
 
   function holdBtn(el, down, up){
+    if(!el) return;
     el.addEventListener('pointerdown', e=>{ e.preventDefault();
       try{ el.setPointerCapture(e.pointerId); }catch(err){} down(); });
     ['pointerup','pointercancel','pointerleave'].forEach(ev=>
@@ -82,11 +83,12 @@ function bindInput(){
 
   document.addEventListener('contextmenu', e=>e.preventDefault());
   document.addEventListener('visibilitychange', ()=>{ Engine._last=0; });
-  bindCamera();
 }
 
+/* ─── KAMERA KONTROLÜ ─── */
 function bindCamera(){
   const zone=$('cam-zone');
+  if(!zone) return;
   const pointers=new Map();
   let lastPinch=0;
   zone.addEventListener('pointerdown', e=>{
@@ -120,125 +122,81 @@ function bindCamera(){
     e.preventDefault();
     Engine.camDist = U.clamp(Engine.camDist + e.deltaY*0.01, 3, 22);
   }, {passive:false});
-  $('btn-cam').addEventListener('click', ()=>{
-    Engine.camMode = (Engine.camMode + 1) % 3;
-    const names = ['🎥 3. ŞAHIS TAKİP','🔍 YAKIN TAKİP','🕹️ SERBEST KAMERA'];
-    if(Engine.camMode===0) Engine.camDist=9;
-    if(Engine.camMode===1) Engine.camDist=5;
-    if(Engine.camMode!==2){
-      const P=Engine.player;
-      const hs=Math.hypot(P.vel.x,P.vel.z);
-      Engine.camYaw = (hs>0.5 ? Math.atan2(P.vel.x,P.vel.z) : Engine.camYaw-Math.PI) + Math.PI;
-    }
-    HUD.toast(names[Engine.camMode], 1.2);
-    Sfx.click();
-  });
+
+  const camBtn=$('btn-cam');
+  if(camBtn){
+    camBtn.addEventListener('click', ()=>{
+      Engine.camMode = (Engine.camMode + 1) % 3;
+      const names = ['🎥 3. ŞAHIS TAKİP','🔍 YAKIN TAKİP','🕹️ SERBEST KAMERA'];
+      if(Engine.camMode===0) Engine.camDist=9;
+      if(Engine.camMode===1) Engine.camDist=5;
+      if(Engine.camMode!==2){
+        const P=Engine.player;
+        const hs=Math.hypot(P.vel.x,P.vel.z);
+        Engine.camYaw = (hs>0.5 ? Math.atan2(P.vel.x,P.vel.z) : Engine.camYaw-Math.PI) + Math.PI;
+      }
+      HUD.toast(names[Engine.camMode], 1.2);
+      Sfx.click();
+    });
+  }
 }
 
-/* ============================================================
-   BOT SOHBET SİSTEMİ
-   ============================================================ */
+/* ─── BOT SOHBET BALONLARI (3D) ─── */
 const BotChat = {
-  messages: {
-    lobby: [
-      'Merhaba! 👋','Bu lobi harika! 🏝️','Kim benimle oynar? 🎮',
-      'Coin topluyorum! 🪙','Marketten eşya aldım! 💎','Hadi yarışalım! 🏃',
-      'Portalları deneyelim! 🌀','Bu oyun çok eğlenceli! 🎉'
-    ],
-    game: [
-      'Dikkat et! ⚠️','Zıpla! ⤴','Hızlı ol! 💨','Beni takip et! 👉',
-      'Vay canına! 😮','Harika! 🌟','Neredeyse bitirdim! 🏁','Çok yakın! 😅',
-      'Bir daha deneyelim! 🔄','Süper! 🔥','Altın buldum! 💰','Kaç! 🏃‍♂️'
-    ],
-    win: [
-      'Tebrikler! 🎉','Helal olsun! 👏','Şampiyon! 🏆','İnanılmaz! 🤩'
-    ],
-    lose: [
-      'Bir daha dene! 💪','Olsun, olur! 😊','Pes etme! 🌟','Tekrar! 🔄'
-    ]
-  },
   activeBubbles: [],
-  sayRandom(bot, category){
-    category = category || 'lobby';
-    const msgs = this.messages[category] || this.messages.lobby;
-    const msg = U.choice(msgs);
-    this.showBubble(bot, msg);
+  messages: {
+    lobby: ['Merhaba! 👋','Bu lobi harika! 🏝️','Kim benimle oynar? 🎮','Coin topluyorum! 🪙',
+            'Marketten eşya aldım! 💎','Hadi yarışalım! 🏃','Portalları deneyelim! 🌀','Çok eğlenceli! 🎉'],
+    game:  ['Dikkat et! ⚠️','Zıpla! ⤴','Hızlı ol! 💨','Beni takip et! 👉','Vay canına! 😮',
+            'Harika! 🌟','Neredeyse bitirdim! 🏁','Çok yakın! 😅','Bir daha! 🔄','Süper! 🔥','Kaç! 🏃']
   },
-  showBubble(bot, msg){
-    if(!bot || !bot.grp || !bot.grp.parent) return;
-    
-    // Eski balonları temizle (max 5)
+  sayRandom(bot, category){
+    const msgs = this.messages[category] || this.messages.lobby;
+    this.showBubble(bot, U.choice(msgs));
+  },
+  showBubble(bot, text){
+    if(!bot || !bot.grp) return;
     if(this.activeBubbles.length >= 5){
       const old = this.activeBubbles.shift();
       if(old.sprite && old.sprite.parent) old.sprite.parent.remove(old.sprite);
       if(old.tex) old.tex.dispose();
     }
-    
     const cv=document.createElement('canvas');
     cv.width=256; cv.height=80;
     const g=cv.getContext('2d');
-    
-    // Balon arka planı
     g.fillStyle='rgba(255,255,255,0.95)';
     g.beginPath();
-    g.moveTo(12,0);
-    g.lineTo(244,0);
-    g.quadraticCurveTo(256,0,256,12);
-    g.lineTo(256,58);
-    g.quadraticCurveTo(256,70,244,70);
-    g.lineTo(140,70);
-    g.lineTo(128,80);
-    g.lineTo(116,70);
-    g.lineTo(12,70);
-    g.quadraticCurveTo(0,70,0,58);
-    g.lineTo(0,12);
+    g.moveTo(12,0); g.lineTo(244,0);
+    g.quadraticCurveTo(256,0,256,12); g.lineTo(256,58);
+    g.quadraticCurveTo(256,70,244,70); g.lineTo(140,70);
+    g.lineTo(128,80); g.lineTo(116,70); g.lineTo(12,70);
+    g.quadraticCurveTo(0,70,0,58); g.lineTo(0,12);
     g.quadraticCurveTo(0,0,12,0);
     g.fill();
-    
-    // Kenarlık
-    g.strokeStyle='#10131f';
-    g.lineWidth=3;
-    g.stroke();
-    
-    // Metin
-    g.fillStyle='#10131f';
+    g.strokeStyle='#0f1220'; g.lineWidth=3; g.stroke();
+    g.fillStyle='#0f1220';
     g.font='bold 22px Arial, sans-serif';
-    g.textAlign='center';
-    g.textBaseline='middle';
-    
-    // Uzun metni kısalt
-    let displayMsg = msg;
+    g.textAlign='center'; g.textBaseline='middle';
+    let msg=text;
     if(g.measureText(msg).width > 230){
-      while(g.measureText(displayMsg+'...').width > 230 && displayMsg.length > 0){
-        displayMsg = displayMsg.slice(0,-1);
-      }
-      displayMsg += '...';
+      while(g.measureText(msg+'...').width > 230 && msg.length>0) msg=msg.slice(0,-1);
+      msg+='...';
     }
-    g.fillText(displayMsg, 128, 35);
-    
+    g.fillText(msg,128,35);
     const tex=new THREE.CanvasTexture(cv);
-    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({
-      map:tex, transparent:true, depthWrite:false
-    }));
-    sprite.scale.set(2.2, 0.7, 1);
-    sprite.renderOrder = 999;
-    
-    // Botun üstüne ekle
+    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
+    sprite.scale.set(2.2,0.7,1);
+    sprite.renderOrder=999;
     bot.grp.add(sprite);
-    sprite.position.set(0, 2.6, 0);
-    
-    this.activeBubbles.push({sprite: sprite, tex: tex, bot: bot, startTime: Engine.time});
-    
-    // 3.5 saniye sonra kaldır
-    const self = this;
-    setTimeout(()=>{
-      self.removeBubble(sprite, tex);
-    }, 3500);
+    sprite.position.set(0,2.6,0);
+    this.activeBubbles.push({sprite:sprite,tex:tex,bot:bot});
+    const self=this;
+    setTimeout(()=>{ self.removeBubble(sprite,tex); }, 3500);
   },
-  removeBubble(sprite, tex){
+  removeBubble(sprite,tex){
     if(sprite && sprite.parent) sprite.parent.remove(sprite);
     if(tex) tex.dispose();
-    const idx = this.activeBubbles.findIndex(b=>b.sprite===sprite);
+    const idx=this.activeBubbles.findIndex(b=>b.sprite===sprite);
     if(idx>=0) this.activeBubbles.splice(idx,1);
   },
   clearAll(){
@@ -250,6 +208,7 @@ const BotChat = {
   }
 };
 
+/* ─── EFEKTLER ─── */
 const FX = {
   parts:[], floats:[], customs:[],
   burst(x,y,z,color,n,spd,life){
@@ -270,8 +229,8 @@ const FX = {
   floatText(x,y,z,text,color){
     const cv=document.createElement('canvas'); cv.width=256; cv.height=96;
     const g=cv.getContext('2d');
-    g.font='bold 52px Nunito, Arial Black'; g.textAlign='center'; g.textBaseline='middle';
-    g.lineWidth=10; g.strokeStyle='#10131f'; g.strokeText(text,128,48);
+    g.font='bold 52px Arial Black, Arial'; g.textAlign='center'; g.textBaseline='middle';
+    g.lineWidth=10; g.strokeStyle='#0f1220'; g.strokeText(text,128,48);
     g.fillStyle=color||'#fff'; g.fillText(text,128,48);
     const t=new THREE.CanvasTexture(cv);
     const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false}));
@@ -298,7 +257,7 @@ const FX = {
     }
     for(let i=this.floats.length-1;i>=0;i--){
       const f=this.floats[i]; f.tl+=dt;
-      if(f.tl>=f.life){ Engine.scene.remove(f.m); f.m.material.map.dispose(); f.m.material.dispose(); this.floats.splice(i,1); continue; }
+      if(f.tl>=f.life){ Engine.scene.remove(f.m); if(f.m.material.map)f.m.material.map.dispose(); f.m.material.dispose(); this.floats.splice(i,1); continue; }
       f.m.position.y+=1.3*dt; f.m.material.opacity=1-f.tl/f.life;
     }
     for(let i=this.customs.length-1;i>=0;i--){
@@ -308,72 +267,81 @@ const FX = {
     }
   },
   clear(){
-    const kill=a=>{ a.forEach(o=>Engine.scene.remove(o.m)); a.length=0; };
+    const kill=a=>{ a.forEach(o=>{ if(o.m && o.m.parent) Engine.scene.remove(o.m); }); a.length=0; };
     kill(this.parts); kill(this.floats); kill(this.customs);
   }
 };
 
+/* ─── HUD ─── */
 const HUD = {
   toastT:null, bigT:null,
-  show(v){ $('hud').classList.toggle('hidden',!v); },
+  show(v){ const el=$('hud-stats'); if(el) el.classList.toggle('hidden',!v); },
   lobby(){
-    $('hud-title').textContent='🏝️ LOBİ';
-    document.querySelectorAll('.lobby-only').forEach(b=>b.style.display='');
-    $('hud-hearts').classList.add('hidden'); $('hud-stat').classList.add('hidden');
-    HUD.boss(null);
+    const t=$('hud-title'); if(t) t.textContent='🏝️ LOBİ';
+    this.heartsHide(); this.statHide(); this.timerHide(); this.boss(null);
   },
   game(m){
-    $('hud-title').textContent=m.emoji+' '+m.name;
-    document.querySelectorAll('.lobby-only').forEach(b=>b.style.display='none');
-    $('hud-hearts').classList.add('hidden'); $('hud-stat').classList.add('hidden');
-    HUD.boss(null);
+    const t=$('hud-title'); if(t) t.textContent=m.emoji+' '+m.name;
+    this.heartsHide(); this.statHide(); this.timerHide(); this.boss(null);
   },
   hearts(n,max){
-    const el=$('hud-hearts'); el.classList.remove('hidden');
+    const el=$('hud-hearts'); if(!el) return;
+    el.classList.remove('hidden');
     let s=''; for(let i=0;i<max;i++) s+= i<n ? '❤️' : '🖤';
     el.textContent=s;
   },
+  heartsHide(){ const el=$('hud-hearts'); if(el){el.classList.add('hidden'); el.textContent='';} },
   stat(t){
-    const el=$('hud-stat');
+    const el=$('hud-stat'); if(!el) return;
     if(t){ el.textContent=t; el.classList.remove('hidden'); }
     else el.classList.add('hidden');
   },
+  statHide(){ const el=$('hud-stat'); if(el) el.classList.add('hidden'); },
+  timer(t){
+    const el=$('hud-timer'); if(!el) return;
+    if(t!==null && t!==undefined){ el.textContent='⏱ '+t; el.classList.remove('hidden'); }
+    else el.classList.add('hidden');
+  },
+  timerHide(){ const el=$('hud-timer'); if(el) el.classList.add('hidden'); },
   coins(){
-    const c='🪙 '+Store.data.coins;
-    ['hud-coins','m-coins','c-coins','g-coins','s-coins'].forEach(id=>{ const el=$(id); if(el) el.textContent=c; });
+    const c=Store.data.coins;
+    ['hud-coins','m-coins','c-coins','g-coins','s-coins'].forEach(id=>{
+      const el=$(id); if(el) el.textContent=c;
+    });
   },
   toast(t,d){
-    d=d||1.5; const el=$('toast'); el.textContent=t; el.classList.add('show');
+    d=d||1.5; const el=$('toast'); if(!el) return;
+    el.textContent=t; el.classList.add('show');
     clearTimeout(this.toastT); this.toastT=setTimeout(()=>el.classList.remove('show'), d*1000);
   },
   big(t,color,d){
-    d=d||1.2; const el=$('bigprompt');
-    el.textContent=t; el.style.background=color||'#2f7df6';
+    d=d||1.2; const el=$('bigprompt'); if(!el) return;
+    el.textContent=t; el.style.background=color||'#00a2ff';
     el.classList.remove('hidden');
     el.style.animation='none'; void el.offsetWidth; el.style.animation='';
     clearTimeout(this.bigT); this.bigT=setTimeout(()=>el.classList.add('hidden'), d*1000);
   },
   interact(t){
-    const el=$('interact');
+    const el=$('interact'); if(!el) return;
     if(t){ el.textContent='✋ '+t; el.classList.remove('hidden'); }
     else el.classList.add('hidden');
   },
-  setControls(v){ $('controls').classList.toggle('hidden',!v); },
+  setControls(v){ const el=$('controls'); if(el) el.classList.toggle('hidden',!v); },
   boss(r){
-    const el=$('bossbar');
+    const el=$('bossbar'); if(!el) return;
     if(r==null){ el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
-    $('bossfill').style.width=Math.max(0,r*100)+'%';
+    const f=$('bossfill'); if(f) f.style.width=Math.max(0,r*100)+'%';
   }
 };
 
+/* ─── DÜNYA ─── */
 const W = {
   killY:-30,
   env(top,near,far,horizon,withSun){
     horizon=horizon||top;
     Engine.scene.background=new THREE.Color(horizon);
     Engine.scene.fog=new THREE.Fog(new THREE.Color(horizon), near, far);
-    // FIX: Set clear color to match horizon to prevent black flash
     Engine.renderer.setClearColor(new THREE.Color(horizon));
     Engine.buildSkyDome(top,horizon);
     if(withSun) Engine.buildSun();
@@ -395,7 +363,7 @@ const W = {
   mover(x,y,z,w,h,d,color,o){
     const c=this.box(x,y,z,w,h,d,color,o);
     c.base={x:x,y:y,z:z};
-    c.axis=o.axis||'x'; c.amp=o.amp||2; c.speed=o.speed||1; c.phase=o.phase||0;
+    c.axis=(o&&o.axis)||'x'; c.amp=(o&&o.amp)||2; c.speed=(o&&o.speed)||1; c.phase=(o&&o.phase)||0;
     Engine.movers.push(c);
     return c;
   },
@@ -403,7 +371,7 @@ const W = {
   removeC(c){
     if(!c) return;
     c.disabled=true;
-    if(c.mesh) Engine.scene.remove(c.mesh);
+    if(c.mesh && c.mesh.parent) Engine.scene.remove(c.mesh);
     let i=Engine.colliders.indexOf(c); if(i>=0) Engine.colliders.splice(i,1);
     i=Engine.movers.indexOf(c); if(i>=0) Engine.movers.splice(i,1);
   },
@@ -412,7 +380,8 @@ const W = {
     BotChat.clearAll();
     Bots.clear();
     Engine.colliders.length=0; Engine.movers.length=0; Engine.interact.length=0;
-    Engine.items.forEach(o=>Engine.scene.remove(o)); Engine.items.length=0;
+    Engine.items.forEach(o=>{ if(o && o.parent) Engine.scene.remove(o); });
+    Engine.items.length=0;
     FX.clear();
     Engine.clearTrail();
     Engine.clearPet();
@@ -421,6 +390,7 @@ const W = {
   }
 };
 
+/* ─── MOTOR ─── */
 const Engine = {
   mode:'boot', idle:true, playerOn:false,
   runId:0, finished:false, noMove:false, inputLock:true,
@@ -428,12 +398,13 @@ const Engine = {
   gameUpdate:null, onFallCb:null, cleanupFns:[], currentMeta:null,
   colliders:[], movers:[], items:[], interact:[],
   spawnPt:{x:0,y:HY,z:0},
-  GEO:null, _matC:null, _matB:null, _studTex:null, _studMat:null,
+  renderer:null, scene:null, camera:null, canvas:null,
+  GEO:null, _matC:null, _matB:null, _studTex:null, _studMat:null, _sunTex:null,
   trailType:null, trailT:0, trailPs:[],
   fxHalo:null, fxAura:null, toolObj:null, _tool:null,
-  pet:null,
-  camYaw:0, camPitch:0.35, camDist:9, camMode:0, followYaw:0,
-  botChatTimer:3,
+  pet:null, limbs:null, playerGroup:null, blob:null,
+  camYaw:0, camPitch:0.35, camDist:9, camMode:0, followYaw:0, snapCam:false,
+  botChatTimer:3, _last:0,
 
   MAT(c){ if(!this._matC[c]) this._matC[c]=new THREE.MeshLambertMaterial({color:c}); return this._matC[c]; },
   MATB(c){ if(!this._matB[c]) this._matB[c]=new THREE.MeshBasicMaterial({color:c}); return this._matB[c]; },
@@ -500,22 +471,23 @@ const Engine = {
     const cv=document.createElement('canvas'); cv.width=cv.height=64;
     const g=cv.getContext('2d');
     g.fillStyle=skin; g.fillRect(0,0,64,64);
-    g.fillStyle='#10131f';
+    g.fillStyle='#0f1220';
     g.fillRect(15,20,8,13); g.fillRect(41,20,8,13);
-    g.lineWidth=4; g.strokeStyle='#10131f';
+    g.lineWidth=4; g.strokeStyle='#0f1220';
     g.beginPath(); g.arc(32,42,11,0.25*Math.PI,0.75*Math.PI); g.stroke();
     const t=new THREE.CanvasTexture(cv); this._faceCache[skin]=t; return t;
   },
   textTex(t,fill){
     fill=fill||'#ffffff';
-    const cv=document.createElement('canvas'); const g=cv.getContext('2d');
-    g.font='bold 44px Nunito, Arial Black';
+    const cv=document.createElement('canvas');
+    let g=cv.getContext('2d');
+    g.font='bold 44px Arial Black, Arial';
     const w=Math.ceil(g.measureText(t).width)+28;
     cv.width=w; cv.height=64;
-    const g2=cv.getContext('2d');
-    g2.font='bold 44px Nunito, Arial Black'; g2.textAlign='center'; g2.textBaseline='middle';
-    g2.lineWidth=8; g2.strokeStyle='#10131f'; g2.strokeText(t,w/2,34);
-    g2.fillStyle=fill; g2.fillText(t,w/2,34);
+    g=cv.getContext('2d');
+    g.font='bold 44px Arial Black, Arial'; g.textAlign='center'; g.textBaseline='middle';
+    g.lineWidth=8; g.strokeStyle='#0f1220'; g.strokeText(t,w/2,34);
+    g.fillStyle=fill; g.fillText(t,w/2,34);
     return new THREE.CanvasTexture(cv);
   },
   emojiTex(ch){
@@ -684,6 +656,14 @@ const Engine = {
       add(0.16,0.3,0.16,gr,-0.2,0.15,0.3); add(0.16,0.3,0.16,gr,0.2,0.15,0.3);
       add(0.16,0.3,0.16,gr,-0.2,0.15,-0.3); add(0.16,0.3,0.16,gr,0.2,0.15,-0.3);
       add(0.15,0.15,0.6,gr,0,0.5,-0.8);
+    } else if(id==='pet_robot'){
+      const mt=this.MAT('#78909c');
+      add(0.6,0.6,0.5,mt,0,0.4,0);
+      add(0.4,0.35,0.35,mt,0,0.85,0);
+      add(0.1,0.2,0.1,this.MATB('#00e5ff'),-0.1,0.9,0.18);
+      add(0.1,0.2,0.1,this.MATB('#00e5ff'),0.1,0.9,0.18);
+      add(0.15,0.3,0.15,mt,-0.2,0.15,0.1); add(0.15,0.3,0.15,mt,0.2,0.15,0.1);
+      add(0.05,0.3,0.05,this.MAT('#ff4d5e'),0,1.1,0);
     } else return null;
     return g;
   },
@@ -700,17 +680,16 @@ const Engine = {
     this.renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:false,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
     this.renderer.autoClear=true;
-    this.renderer.setClearColor(0x87ceeb);
+    this.renderer.setClearColor(0x1e2233);
     this.scene=new THREE.Scene();
     this.camera=new THREE.PerspectiveCamera(60,1,0.1,300);
     this.scene.add(new THREE.HemisphereLight(0xffffff,0x8fa3c7,1.05));
     const dl=new THREE.DirectionalLight(0xfff2d6,0.75);
     dl.position.set(12,24,10); this.scene.add(dl);
 
-    // ✅ DÜZELTİLDİ: Parantez hatası giderildi
-    this.GEO={ 
-      box: new THREE.BoxGeometry(1,1,1), 
-      bit: new THREE.BoxGeometry(0.17,0.17,0.17) 
+    this.GEO={
+      box:new THREE.BoxGeometry(1,1,1),
+      bit:new THREE.BoxGeometry(0.17,0.17,0.17)
     };
     this._matC={}; this._matB={}; this._studTex={}; this._studMat={};
 
@@ -735,6 +714,7 @@ const Engine = {
     window.addEventListener('resize',resize); resize();
 
     bindInput();
+    bindCamera();
     requestAnimationFrame(this.frame.bind(this));
   },
 
@@ -776,12 +756,14 @@ const Engine = {
   updateBotChat(dt){
     this.botChatTimer-=dt;
     if(this.botChatTimer<=0){
-      this.botChatTimer=U.rand(4,9);
-      const aliveBots=Bots.all.filter(b=>!b.dead && b.grp && b.grp.parent);
-      if(aliveBots.length>0){
-        const bot=U.choice(aliveBots);
-        const category = this.mode==='game' ? 'game' : 'lobby';
-        BotChat.sayRandom(bot, category);
+      this.botChatTimer=U.rand(5,10);
+      if(this.mode!=='boot'){
+        const alive=Bots.all.filter(b=>!b.dead && b.grp && b.grp.parent);
+        if(alive.length>0){
+          const bot=U.choice(alive);
+          const cat=this.mode==='game'?'game':'lobby';
+          BotChat.sayRandom(bot,cat);
+        }
       }
     }
   },
@@ -805,11 +787,11 @@ const Engine = {
       if(p.tl>=p.life){ this.scene.remove(p.m); p.m.material.dispose(); this.trailPs.splice(i,1); continue; }
       p.m.position.y+=dt*0.8;
       p.m.material.opacity=1-p.tl/p.life;
-      p.m.scale.multiplyScalar(1-dt*1.5);
+      p.m.scale.multiplyScalar(Math.max(0.01,1-dt*1.5));
     }
   },
   clearTrail(){
-    this.trailPs.forEach(p=>{ this.scene.remove(p.m); p.m.material.dispose(); });
+    this.trailPs.forEach(p=>{ if(p.m&&p.m.parent)this.scene.remove(p.m); if(p.m)p.m.material.dispose(); });
     this.trailPs.length=0;
     this.trailType=null;
   },
@@ -1003,7 +985,7 @@ const Engine = {
       this.trailT-=dt;
       if(this.trailT<=0){ this.trailT=0.07; this.spawnTrail(); }
     }
-    if(this.pet){
+    if(this.pet && this.pet.grp){
       const fy=g.rotation.y;
       const tx=P.x-Math.sin(fy)*1.5, tz=P.z-Math.cos(fy)*1.5;
       this.pet.grp.position.x=U.lerp(this.pet.grp.position.x,tx,1-Math.exp(-3*dt));
@@ -1059,28 +1041,21 @@ const Engine = {
     return sh;
   },
   shake(m){ this.shakeT=0.4; this.shakeM=m; },
-  hurtFx(){ const el=$('dmgflash'); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); },
-  
-  // FIX: Completely rewritten fadeDo to prevent freezing
+  hurtFx(){ const el=$('dmgflash'); if(!el)return; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); },
+
   fadeDo(cb){
-    const f=$('fade');
-    // Immediately set opacity to 1 without transition issues
+    const f=$('fade'); if(!f){ cb(); return; }
     f.style.transition='none';
     f.classList.add('on');
-    // Force reflow to apply immediate style
     void f.offsetWidth;
     f.style.transition='opacity .08s';
-    
     setTimeout(()=>{
       cb();
-      // FIX: Clear WebGL buffer before render to prevent artifacts
       if(this.renderer && this.scene && this.camera){
         this.renderer.clear();
         this.renderer.render(this.scene, this.camera);
       }
-      setTimeout(()=>{
-        f.classList.remove('on');
-      },100);
+      setTimeout(()=>{ f.classList.remove('on'); },100);
     },230);
   },
 
@@ -1155,13 +1130,17 @@ const Engine = {
     if(this.marketGem){
       this.marketGem.position.y=2.1+Math.sin(this.time*2.4)*0.18;
     }
-    for(let i=0;i<this.emoSprites.length;i++){
-      const e=this.emoSprites[i];
-      e.sp.position.y=4.6+Math.sin(this.time*2+e.ph)*0.25;
+    if(this.emoSprites){
+      for(let i=0;i<this.emoSprites.length;i++){
+        const e=this.emoSprites[i];
+        e.sp.position.y=4.6+Math.sin(this.time*2+e.ph)*0.25;
+      }
     }
-    for(let i=0;i<this.clouds.length;i++){
-      const c=this.clouds[i]; c.m.position.x+=c.v*dt;
-      if(c.m.position.x>40) c.m.position.x=-40;
+    if(this.clouds){
+      for(let i=0;i<this.clouds.length;i++){
+        const c=this.clouds[i]; c.m.position.x+=c.v*dt;
+        if(c.m.position.x>40) c.m.position.x=-40;
+      }
     }
     if(this.idle){
       const a=this.time*0.1;
@@ -1190,6 +1169,7 @@ const Engine = {
       lose:(msg,score,coins)=>E.finish(false,score||0,coins||0,msg),
       hearts:(n,max)=>HUD.hearts(n,max),
       stat:t=>HUD.stat(t),
+      timer:t=>HUD.timer(t),
       toast:(t,d)=>HUD.toast(t,d),
       big:(t,c,d)=>HUD.big(t,c,d),
       onExit:fn=>E.cleanupFns.push(fn),
@@ -1197,7 +1177,6 @@ const Engine = {
     };
   },
 
-  // FIX: Added renderer.clear() to prevent frozen canvas
   startGame(meta){
     if(!meta) return;
     this.runId++;
@@ -1222,12 +1201,10 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
-    // FIX: Clear WebGL buffer and force render
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
   },
 
-  // FIX: Added renderer.clear() to prevent frozen canvas
   toLobby(){
     this.finished=false; this.gameUpdate=null; this.onFallCb=null;
     this.noMove=false; this.inputLock=false;
@@ -1248,7 +1225,6 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
-    // FIX: Clear WebGL buffer and force render
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
   },
@@ -1261,7 +1237,6 @@ const Engine = {
     this.playerGroup.visible=false;
   },
 
-  // FIX: Added renderer.clear() to prevent frozen canvas
   enterLobby(){
     this.idle=false; this.inputLock=false;
     this.playerGroup.visible=true;
@@ -1278,7 +1253,6 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
-    // FIX: Clear WebGL buffer and force render
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);
   },
@@ -1291,6 +1265,7 @@ const Engine = {
     else Sfx.lose();
     const nb=Store.setBest(this.currentMeta.id, score);
     if(coins>0) Store.addCoins(coins);
+    Store.addPlay(this.currentMeta.id);
     HUD.coins();
     Events.emit('result',{win:win,score:score,coins:coins,msg:msg||'',
       name:this.currentMeta.name,emoji:this.currentMeta.emoji,
@@ -1298,9 +1273,7 @@ const Engine = {
   }
 };
 
-/* ============================================================
-   BOT SİSTEMİ
-   ============================================================ */
+/* ─── BOT SİSTEMİ ─── */
 const Bots = {
   all:[],
   names:['xX_Pro_TR_Xx','NoobMaster61','BlokUstası','KralCan_34','Elmas_Efe','RoboAyşe',
@@ -1318,10 +1291,11 @@ const Bots = {
       colors={skin:a.skin,shirt:b.shirt,pants:c.pants};
     }
     const limbs=Engine.makeAvatar(g,colors);
-    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:Engine.textTex(name||this.pickName()),transparent:true,depthWrite:false}));
+    const nm=name||this.pickName();
+    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:Engine.textTex(nm),transparent:true,depthWrite:false}));
     tag.scale.set(2.3,0.52,1); tag.position.y=2.3; g.add(tag);
     W.mesh(g);
-    const bot={grp:g,limbs:limbs,pos:new THREE.Vector3(x,0,z),feetY:0,prevFeet:0,vy:0,
+    const bot={grp:g,limbs:limbs,name:nm,pos:new THREE.Vector3(x,0,z),feetY:0,prevFeet:0,vy:0,
       onGround:false,speed:5,yaw:g.rotation.y,yawT:null,walkT:0,swing:0,hspd:0,punchT:0,
       mode:'idle',path:null,idx:0,safeIdx:0,safePos:new THREE.Vector3(x,0,z),loop:false,
       wander:{cx:x,cz:z,r:5,tx:x,tz:z,wait:0},
