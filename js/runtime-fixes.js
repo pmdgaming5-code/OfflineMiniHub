@@ -16,7 +16,6 @@
     const fresh=old.cloneNode(true);old.replaceWith(fresh);fresh.addEventListener('click',handler);return fresh;
   }
 
-  /* Yeni HTML ID'lerini doğrudan bağla. */
   cleanButton('btn-games-home',()=>{Sfx.click();if(typeof renderGames==='function')renderGames();openScreen('screen-games');});
   cleanButton('btn-av-home',()=>{Sfx.click();if(typeof renderChars==='function')renderChars();openScreen('screen-avatar');});
   cleanButton('btn-shop-home',()=>{Sfx.click();shopReturn='screen-home';if(typeof renderShop==='function')renderShop();openScreen('screen-shop');});
@@ -30,8 +29,15 @@
     fresh.addEventListener('click',()=>{Sfx.click();openScreen((fresh.dataset.back||'home')==='home'?'screen-home':fresh.dataset.back);});
   });
 
-  /* Kamera için engine.js'in tek ve mevcut controller'ını kullan.
-     Duplicate pointer listener eklemiyoruz; duplicate cam-zone zaten index.html'den kaldırıldı. */
+  /* HTML'de artık #hud yok; HUD görünürlüğünü gerçek üst/HUD katmanlarına uygula. */
+  if(typeof HUD!=='undefined'&&!HUD.__visibilityFix){
+    HUD.__visibilityFix=true;
+    HUD.show=function(v){
+      ['topbar','hud-stats'].forEach(id=>{const el=byId(id);if(el)el.classList.toggle('hidden',!v);});
+    };
+  }
+
+  /* Kamera listener'ı yalnızca engine.js'te bir kez bulunuyor. */
 
   /* Clicker: her girişte temiz DOM düğümleri kullan; eski listener'lar birikmez. */
   if(typeof Engine!=='undefined'&&!Engine.__clickerListenerGuard){
@@ -59,14 +65,13 @@
     };
   }
 
-  /* Bridge Race: 37 blokla platformun bittiği noktada bitiş trigger'ı erişilemez kalıyordu. */
+  /* Bridge Race: 37 blok sınırı bitiş trigger'ından biraz önce bitiyordu. */
   if(typeof Engine!=='undefined'&&!Engine.__bridgeGuard){
     Engine.__bridgeGuard=true;
     const origTrigger=Engine.checkTriggers.bind(Engine);
     Engine.checkTriggers=function(){
       origTrigger();
       if(this.playerOn&&this.mode==='game'&&this.currentMeta&&this.currentMeta.id==='bridge'&&!this.finished&&this.player.pos.z<=-48){
-        const p=1;
         this.finish(true,320,30,'Bitişe ulaştın! 🏁');
       }
     };
