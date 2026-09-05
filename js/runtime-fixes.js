@@ -113,6 +113,7 @@
      sağlam pointer lifecycle, hassas yaw/pitch, iki parmak zoom ve gerçek takip. */
   if(typeof Engine!=='undefined' && typeof THREE!=='undefined' && !Engine.__robustCameraFix){
     Engine.__robustCameraFix=true;
+    let manualYaw=0;
 
     const oldZone=byId('cam-zone');
     if(oldZone){
@@ -122,7 +123,6 @@
       const pointers=new Map();
       let lastPinch=0;
       let dragging=false;
-      let manualYaw=0;
 
       const clearPointers=()=>{
         pointers.clear();
@@ -131,7 +131,7 @@
       };
 
       zone.addEventListener('pointerdown',e=>{
-        if(e.pointerType==='mouse' && e.button!==0) return;
+        if(e.pointerType==='mouse' && e.button!==0)return;
         e.preventDefault();
         try{zone.setPointerCapture(e.pointerId);}catch(err){}
         pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -153,29 +153,21 @@
         pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
 
         if(pointers.size===1){
-          /* Bir parmak sürükleme = kamera döndürme. Artık ikinci bir kod bunu ezemez. */
           Engine.camYaw-=dx*0.006;
           Engine.camPitch=U.clamp(Engine.camPitch+dy*0.004,0.08,1.25);
           manualYaw=Engine.camYaw;
-          /* Serbest kamera, yalnızca gerçekten döndürmeye başladıktan sonra açılır. */
           if(Math.abs(dx)+Math.abs(dy)>0.5)Engine.camMode=2;
         }else if(pointers.size===2){
           const p=[...pointers.values()];
           const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
-          if(lastPinch>0){
-            Engine.camDist=U.clamp(Engine.camDist-(d-lastPinch)*0.025,3.5,22);
-          }
+          if(lastPinch>0)Engine.camDist=U.clamp(Engine.camDist-(d-lastPinch)*0.025,3.5,22);
           lastPinch=d;
         }
       },{passive:false});
 
       const pointerEnd=e=>{
         pointers.delete(e.pointerId);
-        if(pointers.size===1){
-          const p=[...pointers.values()][0];
-          lastPinch=0;
-          pointers.set(e.pointerId,p);
-        }
+        if(pointers.size<2)lastPinch=0;
         if(pointers.size===0)dragging=false;
       };
       zone.addEventListener('pointerup',pointerEnd);
@@ -186,20 +178,14 @@
         Engine.camDist=U.clamp(Engine.camDist+e.deltaY*0.012,3.5,22);
       },{passive:false});
 
-      const originalUpdateCamera=Engine.updateCamera.bind(Engine);
       Engine.updateCamera=function(dt){
         const P=this.player.pos;
         const speed=Math.hypot(this.player.vel.x,this.player.vel.z);
 
         if(this.camMode!==2){
-          if(speed>0.8){
-            this.followYaw=Math.atan2(this.player.vel.x,this.player.vel.z);
-          }
+          if(speed>0.8)this.followYaw=Math.atan2(this.player.vel.x,this.player.vel.z);
           const targetYaw=this.followYaw+Math.PI;
           this.camYaw=lerpAngle(this.camYaw,targetYaw,1-Math.exp(-4*dt));
-        }else if(!dragging && Math.abs(manualYaw-this.camYaw)<0.0001){
-          /* Serbest modda bırakılan açı korunur; hareket kamerayı artık geri çekmez. */
-          manualYaw=this.camYaw;
         }
 
         const cp=Math.cos(this.camPitch);
@@ -217,6 +203,7 @@
         }else{
           this.camera.position.lerp(target,1-Math.exp(-10*dt));
         }
+
         if(this.shakeT>0){
           this.shakeT-=dt;
           const m=this.shakeM*Math.max(0,this.shakeT)*3;
@@ -226,18 +213,13 @@
         this.camera.lookAt(P.x,P.y+1.2,P.z);
       };
 
-      /* Her yeni oyun/lobi girişinde kamera deterministik bir pozisyona döner. */
-      const resetCamera=()=>{
-        pointers.clear();dragging=false;lastPinch=0;
-        manualYaw=0;
-        thisDummy:null;
-      };
       const oldStart=Engine.startGame.bind(Engine);
       Engine.startGame=function(meta){
         const r=oldStart(meta);
         manualYaw=this.camYaw;
         dragging=false;
-        pointers.clear();lastPinch=0;
+        pointers.clear();
+        lastPinch=0;
         return r;
       };
       const oldEnter=Engine.enterLobby.bind(Engine);
@@ -245,21 +227,21 @@
         const r=oldEnter();
         manualYaw=this.camYaw;
         dragging=false;
-        pointers.clear();lastPinch=0;
+        pointers.clear();
+        lastPinch=0;
         return r;
       };
     }
 
-    /* Kamera düğmesi: temiz, tek handler; döngü 3 mod. */
     const camBtn=byId('btn-cam');
     if(camBtn){
       const fresh=camBtn.cloneNode(true);
       camBtn.replaceWith(fresh);
       fresh.addEventListener('click',()=>{
         Engine.camMode=(Engine.camMode+1)%3;
-        if(Engine.camMode===0){Engine.camDist=9;}
-        else if(Engine.camMode===1){Engine.camDist=5;}
-        else {Engine.camDist=9;}
+        if(Engine.camMode===0)Engine.camDist=9;
+        else if(Engine.camMode===1)Engine.camDist=5;
+        else Engine.camDist=9;
         manualYaw=Engine.camYaw;
         HUD.toast(['🎥 3. ŞAHIS TAKİP','🔍 YAKIN TAKİP','🕹️ SERBEST KAMERA'][Engine.camMode],1.2);
         Sfx.click();
