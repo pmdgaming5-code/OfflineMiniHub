@@ -289,7 +289,28 @@
             if(c.fuse<=0){c.st='gone';c.disabled=true;FX.burst(c.tx,0,c.tz,'#ff5252',8,4,0.5);c.mesh.scale.set(0.01,0.01,0.01);}
           }
         }
-        if(alive<8){tiles.forEach(c=>{c.st='ok';c.disabled=false;c.mesh.scale.set(1,1,1);c.mesh.position.y=-0.25;});}
+  
+        // FIX: Restore cooldown sistemi
+        if(!api._restoreCooldown) api._restoreCooldown=0;
+        api._restoreCooldown-=dt;
+        
+        if(api._restoreCooldown<=0 && alive<50){
+          api._restoreCooldown=3;
+          tiles.forEach(c=>{
+            if(c.st==='gone'){
+              c.st='ok';
+              c.disabled=false;
+              c.mesh.scale.set(1,1,1);
+              c.mesh.position.y=-0.25;
+              if(!c._neutralMat){
+                c._neutralMat=Engine.MATSTUD('#e8e8e8',1.9,1.9);
+              }
+              c.mesh.material=c._neutralMat;
+            }
+          });
+          api.toast('🔄 Zemin yenilendi!',1.2);
+        }
+        
         const P=Engine.player.pos;
         if(Engine.player.onGround)ignite(tileAt(P.x,P.z));
         rb.forEach(b=>{
@@ -306,9 +327,6 @@
         });
         api.stat('⏱ '+Math.ceil(tl)+'s | 🧱 '+alive);
       });
-    }
-  });
-
   /* ---------------- 12) BRIDGE RACE ---------------- */
   defGame({
     id:'bridge',name:'BRIDGE RACE',emoji:'🌉',color:'#31a2ff',
@@ -385,10 +403,24 @@
         if(P.z<endZ+0.6&&blocks>0&&pb.len<MAXL){
           blocks--;syncStack();pb.len++;setBridge(pb,0);Sfx.tap();
         }
+        // YENİ:
         rb.forEach(r=>{
           const lead=-P.z;
           const rate=0.85+U.clamp((lead-r.prog)*0.02,-0.25,0.5);
           r.blocks+=dt*rate;
+  
+          // FIX: Botlar otomatik blok topluyor (görsel消失)
+          if(!r._botBlocks) r._botBlocks=[];
+          if(r._botBlocks.length===0 && Math.random()<dt*0.8){
+            // Rastgele blok seç ve topla
+            const blockCols=Engine.scene.children.filter(c=>c.isMesh && c.position.y===0.4 && c.geometry.type==='BoxGeometry');
+            if(blockCols.length>0){
+              const b=blockCols[Math.floor(Math.random()*blockCols.length)];
+              r._botBlocks.push(b);
+              Engine.scene.remove(b);
+            }
+          }
+  
           const bEnd=anchorZ-r.bridge.len*UNIT;
           r.pos.z=Math.max(bEnd+0.3,r.pos.z-4.5*dt);
           r.prog=-r.pos.z;
@@ -398,10 +430,6 @@
           r.pos.x=r.lx;r.hspd=4.5;
           Bots.physics(r,dt);Bots.anim(r,dt);
         });
-        api.stat('🧱 '+blocks+' blok | 📏 '+Math.floor(-P.z)+'m');
-      });
-    }
-  });
 
   /* ---------------- 13) SUMO ROYALE ---------------- */
   defGame({
@@ -691,14 +719,19 @@
             if(wave>5){done=true;api.win(500+kills*10,40+hearts*3,kills+' zombi avladın! 🧟');return;}
             spawnWave(wave);
             restT=3;
-            if(hearts<5){
-              const hx=U.rand(-6,6),hz=U.rand(-6,6);
-              const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:Engine.emojiTex('❤️'),transparent:true,depthWrite:false}));
-              sp.scale.set(1,1,1);sp.position.set(hx,1.2,hz);W.mesh(sp);
-              const c=W.box(hx,1,hz,1.4,2,1.4,'#000',{trigger:true});
-              c.mesh=sp;
-              c.cb=()=>{hearts=Math.min(5,hearts+1);api.hearts(hearts,5);Sfx.coin();W.removeC(c);};
-            }
+            // FIX: Her dalga geçişinde kalp kutusu spawn et (hearts<5 kontrolünü kaldır)
+            const hx=U.rand(-6,6),hz=U.rand(-6,6);
+            const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:Engine.emojiTex('❤️'),transparent:true,depthWrite:false}));
+            sp.scale.set(1,1,1);sp.position.set(hx,1.2,hz);W.mesh(sp);
+            const c=W.box(hx,1,hz,1.4,2,1.4,'#000',{trigger:true});
+            c.mesh=sp;
+            c.cb=()=>{
+              if(c.disabled) return;
+             hearts=Math.min(5,hearts+1);
+              api.hearts(hearts,5);
+              Sfx.coin();
+              W.removeC(c);
+            };
           }
         }
         api.stat('🧟 DALGA '+Math.max(1,wave)+'/5 | 💀 '+kills+' | kalan '+zombies.length);
@@ -738,10 +771,16 @@
         for(const f of FISH){if(r<f.p)return f;r-=f.p;}
         return FISH[0];
       }
+      // YENİ:
       function cast(){
         state='wait';waitT=U.rand(1.2,4);
         float.visible=true;
-        float.position.set(rodTip.x+U.rand(-1,1),0.2,rodTip.z-U.rand(2,5));
+        // FIX: Oyuncunun pozisyonuna göre olta ucu hesapla
+        const P=Engine.player.pos;
+        const yaw=Engine.playerGroup.rotation.y;
+        const tipX=P.x+Math.sin(yaw)*1.5;
+        const tipZ=P.z+Math.cos(yaw)*1.5;
+        float.position.set(tipX+U.rand(-1,1),0.2,tipZ-U.rand(2,5));
         ex.visible=false;
         Sfx.splash();
         FX.ring(float.position.x,0.1,float.position.z,'#b3e5fc');
@@ -765,6 +804,9 @@
         } else if(state==='bite'){
           biteT-=dt;
           float.position.y=0.2+Math.sin(Engine.time*20)*0.2;
+          // FIX: ex pozisyonunu float ile senkronize et
+          ex.position.x=float.position.x;
+          ex.position.z=float.position.z;
           ex.position.y=1.2+Math.sin(Engine.time*10)*0.2;
           if(biteT<=0){
             state='idle';float.visible=false;ex.visible=false;
