@@ -29,7 +29,7 @@
     fresh.addEventListener('click',()=>{Sfx.click();openScreen((fresh.dataset.back||'home')==='home'?'screen-home':fresh.dataset.back);});
   });
 
-  /* HTML'de artık #hud yok; HUD görünürlüğünü gerçek üst/HUD katmanlarına uygula. */
+  /* HTML'de artık #hud yok; HUD görünürlüğünü gerçek katmanlara uygula. */
   if(typeof HUD!=='undefined'&&!HUD.__visibilityFix){
     HUD.__visibilityFix=true;
     HUD.show=function(v){
@@ -37,7 +37,39 @@
     };
   }
 
-  /* Kamera listener'ı yalnızca engine.js'te bir kez bulunuyor. */
+  /* Trigger temizliği: W.box ile oluşan gizli collider mesh'i de kaynaktan silinsin. */
+  if(typeof W!=='undefined'&&!W.__cleanupFix){
+    W.__cleanupFix=true;
+    const baseBox=W.box.bind(W);
+    W.box=function(x,y,z,w,h,d,color,o){
+      const c=baseBox(x,y,z,w,h,d,color,o);
+      c.__originalMesh=c.mesh;
+      return c;
+    };
+    const baseRemove=W.removeC.bind(W);
+    W.removeC=function(c){
+      if(!c)return;
+      const meshes=[c.__originalMesh,c.mesh].filter(Boolean);
+      const seen=[];
+      meshes.forEach(m=>{if(seen.indexOf(m)>=0)return;seen.push(m);if(m.parent)Engine.scene.remove(m);const i=Engine.items.indexOf(m);if(i>=0)Engine.items.splice(i,1);});
+      baseRemove(c);
+      meshes.forEach(m=>{const i=Engine.items.indexOf(m);if(i>=0)Engine.items.splice(i,1);});
+    };
+  }
+
+  /* Oyun değiştiğinde önceki oyunun gecikmiş callback'i yeni oyunda çalışmasın. */
+  if(typeof window!=='undefined'&&!window.__runScopedTimers){
+    window.__runScopedTimers=true;
+    const realSetTimeout=window.setTimeout.bind(window);
+    window.setTimeout=function(fn,delay,...args){
+      const scoped=(typeof Engine!=='undefined'&&Engine.mode==='game');
+      const run=scoped?Engine.runId:null;
+      return realSetTimeout(()=>{
+        if(scoped&&(!Engine||Engine.mode!=='game'||Engine.runId!==run))return;
+        fn(...args);
+      },delay);
+    };
+  }
 
   /* Clicker: her girişte temiz DOM düğümleri kullan; eski listener'lar birikmez. */
   if(typeof Engine!=='undefined'&&!Engine.__clickerListenerGuard){
@@ -65,7 +97,7 @@
     };
   }
 
-  /* Bridge Race: 37 blok sınırı bitiş trigger'ından biraz önce bitiyordu. */
+  /* Bridge Race: 37 blok sınırı bitiş trigger'ından biraz önce kalıyordu. */
   if(typeof Engine!=='undefined'&&!Engine.__bridgeGuard){
     Engine.__bridgeGuard=true;
     const origTrigger=Engine.checkTriggers.bind(Engine);
