@@ -1,10 +1,16 @@
+/* ============================================================
+   main.js — Menü, karakterler, kartlar, sonuç, PREMIUM MARKET
+   ============================================================ */
 'use strict';
+
 let lastGameId=null;
+
 function showOnly(screenId){
   ['screen-menu','screen-chars','screen-games','screen-howto','screen-over','screen-shop']
     .forEach(id=>$(id).classList.add('hidden'));
   if(screenId) $(screenId).classList.remove('hidden');
 }
+
 function startGameById(id){
   const m=GAMES.find(g=>g.id===id);
   if(!m) return;
@@ -12,6 +18,7 @@ function startGameById(id){
   Engine.startGame(m);
   HUD.toast(m.emoji+' '+m.name, 1.4);
 }
+
 function buildMenuBg(){
   const bg=$('menu-bg');
   const cols=['#ff4d5e','#ffd32a','#3ecf5a','#2f7df6','#8a5cf6','#ff8f2a'];
@@ -29,6 +36,7 @@ function buildMenuBg(){
   $('ticker').textContent=GAMES.map(g=>g.emoji).join(' ');
   $('menu-avatar').innerHTML=avatarDOM(CHARS[Store.data.char]||CHARS[0]);
 }
+
 function renderChars(){
   const grid=$('char-grid');grid.innerHTML='';
   CHARS.forEach((c,i)=>{
@@ -62,6 +70,7 @@ function renderChars(){
     grid.appendChild(card);
   });
 }
+
 function renderGames(){
   const grid=$('game-grid');grid.innerHTML='';
   GAMES.forEach((g,i)=>{
@@ -83,6 +92,7 @@ function renderGames(){
     grid.appendChild(card);
   });
 }
+
 function renderShop(){
   const grid=$('shop-grid');grid.innerHTML='';
   SHOP.forEach((it,i)=>{
@@ -114,6 +124,7 @@ function renderShop(){
     grid.appendChild(card);
   });
 }
+
 Events.on('result',r=>{
   $('over-emoji').textContent=r.win?'🏆':'💀';
   const tt=$('over-title');
@@ -126,9 +137,11 @@ Events.on('result',r=>{
   $('over-coins').textContent='+'+r.coins+' 🪙';
   showOnly('screen-over');
 });
+
 function boot(){
   Store.load();
   if(!window.THREE){$('nogl').classList.remove('hidden');return;}
+  
   Engine.init($('game'));
   Engine.applyChar(Store.data.char);
   Engine.idleLobby();
@@ -137,6 +150,8 @@ function boot(){
   showOnly('screen-menu');
   Sfx.on=!Store.data.muted;
   $('btn-sound').textContent=Sfx.on?'🔊':'🔇';
+  
+  /* Menü butonları */
   $('btn-play').addEventListener('click',()=>{
     Sfx.click();
     Engine.fadeDo(()=>{
@@ -153,6 +168,8 @@ function boot(){
     $('btn-sound').textContent=Sfx.on?'🔊':'🔇';
     if(Sfx.on)Sfx.click();
   });
+  
+  /* Geri butonları */
   $('btn-cback').addEventListener('click',()=>{Sfx.click();showOnly('screen-menu');});
   $('btn-sback').addEventListener('click',()=>{
     Sfx.click();
@@ -161,12 +178,16 @@ function boot(){
   });
   $('btn-gback').addEventListener('click',()=>{Sfx.click();showOnly(null);Engine.enterLobby();});
   $('btn-hback').addEventListener('click',()=>{Sfx.click();showOnly('screen-menu');});
+  
+  /* Reset butonu */
   $('btn-reset').addEventListener('click',()=>{
     if(confirm('Tüm ilerleme silinsin mi?')){
       localStorage.removeItem(Store.KEY);
       location.reload();
     }
   });
+  
+  /* Exit butonu (oyunda/lobide) */
   $('btn-exit').addEventListener('click',()=>{
     Sfx.click();
     if(Engine.mode==='game'){
@@ -175,14 +196,20 @@ function boot(){
       Engine.fadeDo(()=>{Engine.idleLobby();HUD.show(false);HUD.setControls(false);showOnly('screen-menu');});
     }
   });
+  
+  /* Lobi butonları */
   $('btn-games').addEventListener('click',()=>{Sfx.click();renderGames();showOnly('screen-games');});
   $('btn-shop2').addEventListener('click',()=>{Sfx.click();renderShop();showOnly('screen-shop');});
+  
+  /* Events */
   Events.on('reqGame',id=>{
     Engine.fadeDo(()=>{showOnly(null);startGameById(id);});
   });
   Events.on('reqShop',()=>{
     renderShop();showOnly('screen-shop');
   });
+  
+  /* Sonuç ekranı butonları */
   $('btn-retry').addEventListener('click',()=>{
     Sfx.click();
     Engine.fadeDo(()=>{showOnly(null);if(lastGameId)startGameById(lastGameId);});
@@ -191,6 +218,8 @@ function boot(){
     Sfx.click();
     Engine.fadeDo(()=>{showOnly(null);Engine.toLobby();});
   });
+  
   Events.on('coins',()=>HUD.coins());
 }
+
 boot();
