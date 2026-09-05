@@ -125,5 +125,111 @@
     };
     if(Engine.mode==='lobby' && Engine.idle)Engine.idleLobby();
   }
+
+  /*
+     Kamera hotfix:
+     - Motorun eski #cam-zone listener'larını kaldırıp tek, kontrollü bir yüzey kullan.
+     - Kamera sürüklenince camMode'u zorla 2 (serbest) yapma; seçili takip modu korunur.
+     - Küçük dokunuşları kamera döndürme olarak sayma.
+     - Multi-touch pinch yalnızca zoom yapsın.
+     - Sekme/uygulama değişiminde kalan pointer'ları temizle.
+  */
+  if(typeof Engine!=='undefined' && !window.__stableCameraInput){
+    window.__stableCameraInput=true;
+    const oldZone=byId('cam-zone');
+    if(oldZone){
+      const zone=oldZone.cloneNode(false);
+      oldZone.replaceWith(zone);
+      zone.setAttribute('aria-hidden','true');
+      zone.style.touchAction='none';
+      zone.style.webkitUserSelect='none';
+      zone.style.userSelect='none';
+
+      const pointers=new Map();
+      let lastPinch=0;
+      let dragId=null;
+      let dragDistance=0;
+      const DRAG_START=4;
+
+      const reset=()=>{
+        pointers.clear();
+        lastPinch=0;
+        dragId=null;
+        dragDistance=0;
+        if(typeof Engine!=='undefined') Engine.inputLock=!!(Engine.mode==='result');
+      };
+
+      const isUsable=()=>typeof Engine!=='undefined' && (Engine.mode==='game'||(Engine.mode==='lobby'&&!Engine.idle));
+
+      zone.addEventListener('pointerdown',e=>{
+        if(!isUsable())return;
+        e.preventDefault();
+        try{zone.setPointerCapture(e.pointerId);}catch(err){}
+        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        if(pointers.size===1){
+          dragId=e.pointerId;
+          dragDistance=0;
+        }else if(pointers.size===2){
+          const p=[...pointers.values()];
+          lastPinch=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+        }
+      });
+
+      zone.addEventListener('pointermove',e=>{
+        if(!pointers.has(e.pointerId) || !isUsable())return;
+        const prev=pointers.get(e.pointerId);
+        const dx=e.clientX-prev.x;
+        const dy=e.clientY-prev.y;
+        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+        if(pointers.size===1 && e.pointerId===dragId){
+          dragDistance+=Math.hypot(dx,dy);
+          if(dragDistance<DRAG_START)return;
+          Engine.camYaw-=dx*0.005;
+          Engine.camPitch=U.clamp(Engine.camPitch+dy*0.004,0.05,1.25);
+        }else if(pointers.size===2){
+          const p=[...pointers.values()];
+          const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+          if(lastPinch>0)Engine.camDist=U.clamp(Engine.camDist-(d-lastPinch)*0.03,3,22);
+          lastPinch=d;
+        }
+      });
+
+      const end=e=>{
+        pointers.delete(e.pointerId);
+        if(pointers.size<2)lastPinch=0;
+        if(e.pointerId===dragId){dragId=null;dragDistance=0;}
+      };
+      zone.addEventListener('pointerup',end);
+      zone.addEventListener('pointercancel',end);
+      zone.addEventListener('lostpointercapture',e=>{
+        pointers.delete(e.pointerId);
+        if(pointers.size===0)reset();
+      });
+      window.addEventListener('blur',reset);
+      document.addEventListener('visibilitychange',()=>{if(document.hidden)reset();});
+
+      const camBtn=byId('btn-cam');
+      if(camBtn){
+        const fresh=camBtn.cloneNode(true);
+        camBtn.replaceWith(fresh);
+        fresh.addEventListener('click',()=>{
+          if(typeof Engine==='undefined'||Engine.mode==='result')return;
+          Engine.camMode=(Engine.camMode+1)%3;
+          if(Engine.camMode===0)Engine.camDist=9;
+          if(Engine.camMode===1)Engine.camDist=5;
+          if(Engine.camMode!==2){
+            const P=Engine.player;
+            const hs=P?Math.hypot(P.vel.x,P.vel.z):0;
+            Engine.camYaw=(hs>0.5?Math.atan2(P.vel.x,P.vel.z)+Math.PI:Engine.camYaw);
+          }
+          const names=['🎥 3. ŞAHIS TAKİP','🔍 YAKIN TAKİP','🕹️ SERBEST KAMERA'];
+          HUD.toast(names[Engine.camMode],1.2);
+          Sfx.click();
+        });
+      }
+    }
+  }
+
   if(typeof HUD!=='undefined')HUD.coins();
 })();
