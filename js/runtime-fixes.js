@@ -66,7 +66,7 @@
       const run=scoped?Engine.runId:null;
       return realSetTimeout(()=>{
         if(scoped&&(!Engine||Engine.mode!=='game'||Engine.runId!==run))return;
-        fn(...args);
+        if(typeof fn==='function')fn(...args);
       },delay);
     };
   }
@@ -109,6 +109,164 @@
     };
   }
 
+  /* Kamera sistemi tamamen yeniden bağlanıyor: sağ tarafta tek gesture yüzeyi,
+     sağlam pointer lifecycle, hassas yaw/pitch, iki parmak zoom ve gerçek takip. */
+  if(typeof Engine!=='undefined' && typeof THREE!=='undefined' && !Engine.__robustCameraFix){
+    Engine.__robustCameraFix=true;
+
+    const oldZone=byId('cam-zone');
+    if(oldZone){
+      const zone=oldZone.cloneNode(false);
+      oldZone.replaceWith(zone);
+
+      const pointers=new Map();
+      let lastPinch=0;
+      let dragging=false;
+      let manualYaw=0;
+
+      const clearPointers=()=>{
+        pointers.clear();
+        lastPinch=0;
+        dragging=false;
+      };
+
+      zone.addEventListener('pointerdown',e=>{
+        if(e.pointerType==='mouse' && e.button!==0) return;
+        e.preventDefault();
+        try{zone.setPointerCapture(e.pointerId);}catch(err){}
+        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        dragging=true;
+        if(pointers.size===1){
+          manualYaw=Engine.camYaw;
+        }else if(pointers.size===2){
+          const p=[...pointers.values()];
+          lastPinch=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+        }
+      },{passive:false});
+
+      zone.addEventListener('pointermove',e=>{
+        const prev=pointers.get(e.pointerId);
+        if(!prev)return;
+        e.preventDefault();
+        const dx=e.clientX-prev.x;
+        const dy=e.clientY-prev.y;
+        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+        if(pointers.size===1){
+          /* Bir parmak sürükleme = kamera döndürme. Artık ikinci bir kod bunu ezemez. */
+          Engine.camYaw-=dx*0.006;
+          Engine.camPitch=U.clamp(Engine.camPitch+dy*0.004,0.08,1.25);
+          manualYaw=Engine.camYaw;
+          /* Serbest kamera, yalnızca gerçekten döndürmeye başladıktan sonra açılır. */
+          if(Math.abs(dx)+Math.abs(dy)>0.5)Engine.camMode=2;
+        }else if(pointers.size===2){
+          const p=[...pointers.values()];
+          const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+          if(lastPinch>0){
+            Engine.camDist=U.clamp(Engine.camDist-(d-lastPinch)*0.025,3.5,22);
+          }
+          lastPinch=d;
+        }
+      },{passive:false});
+
+      const pointerEnd=e=>{
+        pointers.delete(e.pointerId);
+        if(pointers.size===1){
+          const p=[...pointers.values()][0];
+          lastPinch=0;
+          pointers.set(e.pointerId,p);
+        }
+        if(pointers.size===0)dragging=false;
+      };
+      zone.addEventListener('pointerup',pointerEnd);
+      zone.addEventListener('pointercancel',pointerEnd);
+      zone.addEventListener('lostpointercapture',clearPointers);
+      zone.addEventListener('wheel',e=>{
+        e.preventDefault();
+        Engine.camDist=U.clamp(Engine.camDist+e.deltaY*0.012,3.5,22);
+      },{passive:false});
+
+      const originalUpdateCamera=Engine.updateCamera.bind(Engine);
+      Engine.updateCamera=function(dt){
+        const P=this.player.pos;
+        const speed=Math.hypot(this.player.vel.x,this.player.vel.z);
+
+        if(this.camMode!==2){
+          if(speed>0.8){
+            this.followYaw=Math.atan2(this.player.vel.x,this.player.vel.z);
+          }
+          const targetYaw=this.followYaw+Math.PI;
+          this.camYaw=lerpAngle(this.camYaw,targetYaw,1-Math.exp(-4*dt));
+        }else if(!dragging && Math.abs(manualYaw-this.camYaw)<0.0001){
+          /* Serbest modda bırakılan açı korunur; hareket kamerayı artık geri çekmez. */
+          manualYaw=this.camYaw;
+        }
+
+        const cp=Math.cos(this.camPitch);
+        const sp=Math.sin(this.camPitch);
+        const d=this.camDist;
+        const target=new THREE.Vector3(
+          P.x+Math.sin(this.camYaw)*cp*d,
+          P.y+sp*d+1.2,
+          P.z+Math.cos(this.camYaw)*cp*d
+        );
+
+        if(this.snapCam){
+          this.camera.position.copy(target);
+          this.snapCam=false;
+        }else{
+          this.camera.position.lerp(target,1-Math.exp(-10*dt));
+        }
+        if(this.shakeT>0){
+          this.shakeT-=dt;
+          const m=this.shakeM*Math.max(0,this.shakeT)*3;
+          this.camera.position.x+=U.rand(-m,m);
+          this.camera.position.y+=U.rand(-m,m);
+        }
+        this.camera.lookAt(P.x,P.y+1.2,P.z);
+      };
+
+      /* Her yeni oyun/lobi girişinde kamera deterministik bir pozisyona döner. */
+      const resetCamera=()=>{
+        pointers.clear();dragging=false;lastPinch=0;
+        manualYaw=0;
+        thisDummy:null;
+      };
+      const oldStart=Engine.startGame.bind(Engine);
+      Engine.startGame=function(meta){
+        const r=oldStart(meta);
+        manualYaw=this.camYaw;
+        dragging=false;
+        pointers.clear();lastPinch=0;
+        return r;
+      };
+      const oldEnter=Engine.enterLobby.bind(Engine);
+      Engine.enterLobby=function(){
+        const r=oldEnter();
+        manualYaw=this.camYaw;
+        dragging=false;
+        pointers.clear();lastPinch=0;
+        return r;
+      };
+    }
+
+    /* Kamera düğmesi: temiz, tek handler; döngü 3 mod. */
+    const camBtn=byId('btn-cam');
+    if(camBtn){
+      const fresh=camBtn.cloneNode(true);
+      camBtn.replaceWith(fresh);
+      fresh.addEventListener('click',()=>{
+        Engine.camMode=(Engine.camMode+1)%3;
+        if(Engine.camMode===0){Engine.camDist=9;}
+        else if(Engine.camMode===1){Engine.camDist=5;}
+        else {Engine.camDist=9;}
+        manualYaw=Engine.camYaw;
+        HUD.toast(['🎥 3. ŞAHIS TAKİP','🔍 YAKIN TAKİP','🕹️ SERBEST KAMERA'][Engine.camMode],1.2);
+        Sfx.click();
+      });
+    }
+  }
+
   /* Roblox benzeri ilk lobi dahil, her lobby build'inde dekorasyonu uygula. */
   if(typeof Engine!=='undefined'&&!Engine.__lobbyDecorPatched){
     Engine.__lobbyDecorPatched=true;
@@ -125,111 +283,5 @@
     };
     if(Engine.mode==='lobby' && Engine.idle)Engine.idleLobby();
   }
-
-  /*
-     Kamera hotfix:
-     - Motorun eski #cam-zone listener'larını kaldırıp tek, kontrollü bir yüzey kullan.
-     - Kamera sürüklenince camMode'u zorla 2 (serbest) yapma; seçili takip modu korunur.
-     - Küçük dokunuşları kamera döndürme olarak sayma.
-     - Multi-touch pinch yalnızca zoom yapsın.
-     - Sekme/uygulama değişiminde kalan pointer'ları temizle.
-  */
-  if(typeof Engine!=='undefined' && !window.__stableCameraInput){
-    window.__stableCameraInput=true;
-    const oldZone=byId('cam-zone');
-    if(oldZone){
-      const zone=oldZone.cloneNode(false);
-      oldZone.replaceWith(zone);
-      zone.setAttribute('aria-hidden','true');
-      zone.style.touchAction='none';
-      zone.style.webkitUserSelect='none';
-      zone.style.userSelect='none';
-
-      const pointers=new Map();
-      let lastPinch=0;
-      let dragId=null;
-      let dragDistance=0;
-      const DRAG_START=4;
-
-      const reset=()=>{
-        pointers.clear();
-        lastPinch=0;
-        dragId=null;
-        dragDistance=0;
-        if(typeof Engine!=='undefined') Engine.inputLock=!!(Engine.mode==='result');
-      };
-
-      const isUsable=()=>typeof Engine!=='undefined' && (Engine.mode==='game'||(Engine.mode==='lobby'&&!Engine.idle));
-
-      zone.addEventListener('pointerdown',e=>{
-        if(!isUsable())return;
-        e.preventDefault();
-        try{zone.setPointerCapture(e.pointerId);}catch(err){}
-        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-        if(pointers.size===1){
-          dragId=e.pointerId;
-          dragDistance=0;
-        }else if(pointers.size===2){
-          const p=[...pointers.values()];
-          lastPinch=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
-        }
-      });
-
-      zone.addEventListener('pointermove',e=>{
-        if(!pointers.has(e.pointerId) || !isUsable())return;
-        const prev=pointers.get(e.pointerId);
-        const dx=e.clientX-prev.x;
-        const dy=e.clientY-prev.y;
-        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-
-        if(pointers.size===1 && e.pointerId===dragId){
-          dragDistance+=Math.hypot(dx,dy);
-          if(dragDistance<DRAG_START)return;
-          Engine.camYaw-=dx*0.005;
-          Engine.camPitch=U.clamp(Engine.camPitch+dy*0.004,0.05,1.25);
-        }else if(pointers.size===2){
-          const p=[...pointers.values()];
-          const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
-          if(lastPinch>0)Engine.camDist=U.clamp(Engine.camDist-(d-lastPinch)*0.03,3,22);
-          lastPinch=d;
-        }
-      });
-
-      const end=e=>{
-        pointers.delete(e.pointerId);
-        if(pointers.size<2)lastPinch=0;
-        if(e.pointerId===dragId){dragId=null;dragDistance=0;}
-      };
-      zone.addEventListener('pointerup',end);
-      zone.addEventListener('pointercancel',end);
-      zone.addEventListener('lostpointercapture',e=>{
-        pointers.delete(e.pointerId);
-        if(pointers.size===0)reset();
-      });
-      window.addEventListener('blur',reset);
-      document.addEventListener('visibilitychange',()=>{if(document.hidden)reset();});
-
-      const camBtn=byId('btn-cam');
-      if(camBtn){
-        const fresh=camBtn.cloneNode(true);
-        camBtn.replaceWith(fresh);
-        fresh.addEventListener('click',()=>{
-          if(typeof Engine==='undefined'||Engine.mode==='result')return;
-          Engine.camMode=(Engine.camMode+1)%3;
-          if(Engine.camMode===0)Engine.camDist=9;
-          if(Engine.camMode===1)Engine.camDist=5;
-          if(Engine.camMode!==2){
-            const P=Engine.player;
-            const hs=P?Math.hypot(P.vel.x,P.vel.z):0;
-            Engine.camYaw=(hs>0.5?Math.atan2(P.vel.x,P.vel.z)+Math.PI:Engine.camYaw);
-          }
-          const names=['🎥 3. ŞAHIS TAKİP','🔍 YAKIN TAKİP','🕹️ SERBEST KAMERA'];
-          HUD.toast(names[Engine.camMode],1.2);
-          Sfx.click();
-        });
-      }
-    }
-  }
-
   if(typeof HUD!=='undefined')HUD.coins();
 })();
