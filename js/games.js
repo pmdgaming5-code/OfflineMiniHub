@@ -573,7 +573,7 @@ defGame({
     belt.scale.set(1.04,0.2,0.79);belt.position.y=1.75;dummy.add(belt);
     W.mesh(dummy);
     let dummyT=0;
-    Engine.camMode=2;Engine.camDist=6;Engine.camPitch=0.3;Engine.camYaw=0;
+    Engine.camMode=2;Engine.camDist=6;Engine.camPitch=0.35;Engine.camYaw=0;
     api.onExit(()=>{Engine.camMode=0;Engine.camDist=9;Engine.camPitch=0.35;});
     const bb=Bots.make(null,2.3,0.6);
     bb.mode='manual';bb.fallBelow=-100;bb.yawT=Math.PI;
