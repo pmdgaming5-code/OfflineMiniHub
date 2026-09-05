@@ -1,5 +1,10 @@
+/* ============================================================
+   core.js — Kayıt, olaylar, sesler, karakterler, MARKET eşyaları
+   ============================================================ */
 'use strict';
+
 const $ = id => document.getElementById(id);
+
 const U = {
   clamp:(v,a,b)=> v<a?a:(v>b?b:v),
   lerp:(a,b,t)=> a+(b-a)*t,
@@ -8,15 +13,18 @@ const U = {
   choice:arr=> arr[Math.floor(Math.random()*arr.length)],
   approach(v,t,d){ return v<t ? Math.min(t,v+d) : Math.max(t,v-d); }
 };
+
 const Events = {
   m:{},
   on(e,f){ (this.m[e]=this.m[e]||[]).push(f); },
   emit(e,...a){ (this.m[e]||[]).forEach(f=>f(...a)); }
 };
+
 const Store = {
   KEY:'bloxhub_v1', data:null,
   load(){
-    try{ this.data = JSON.parse(localStorage.getItem(this.KEY)) || {}; }catch(e){ this.data = {}; }
+    try{ this.data = JSON.parse(localStorage.getItem(this.KEY)) || {}; }
+    catch(e){ this.data = {}; }
     if(!Array.isArray(this.data.owned)) this.data.owned=[0];
     if(typeof this.data.coins!=='number') this.data.coins=0;
     if(typeof this.data.char!=='number') this.data.char=0;
@@ -29,8 +37,15 @@ const Store = {
     });
   },
   save(){ try{ localStorage.setItem(this.KEY, JSON.stringify(this.data)); }catch(e){} },
-  addCoins(n){ this.data.coins = Math.max(0, this.data.coins + n); this.save(); Events.emit('coins'); },
-  setBest(id,score){ const b = this.data.best[id]||0; if(score>b){ this.data.best[id]=score; this.save(); return true; } return false; },
+  addCoins(n){
+    this.data.coins = Math.max(0, this.data.coins + n);
+    this.save(); Events.emit('coins');
+  },
+  setBest(id,score){
+    const b = this.data.best[id]||0;
+    if(score>b){ this.data.best[id]=score; this.save(); return true; }
+    return false;
+  },
   getBest(id){ return this.data.best[id]||0; },
   hasItem(id){ return this.data.items.indexOf(id)>=0; },
   buyItem(it){
@@ -45,6 +60,7 @@ const Store = {
     this.save();
   }
 };
+
 const SHOP = [
   {id:'glasses',      name:'PİLOT GÖZLÜĞÜ',  icon:'🕶️', cost:80,  slot:'face',  desc:'Karizma +10'},
   {id:'visor',        name:'NEON VİZÖR',     icon:'🤖', cost:95,  slot:'face',  desc:'Gelecekten geldi'},
@@ -75,10 +91,14 @@ const SHOP = [
   {id:'pet_cat',      name:'KEDİ',           icon:'🐱', cost:350, slot:'pet',   desc:'Miyav'},
   {id:'pet_dragon',   name:'MİNİ EJDER',     icon:'🐲', cost:500, slot:'pet',   desc:'Nadir yaratık'}
 ];
+
 const Sfx = {
   ctx:null, on:true,
   ensure(){
-    if(!this.ctx){ const AC = window.AudioContext||window.webkitAudioContext; if(AC) this.ctx = new AC(); }
+    if(!this.ctx){
+      const AC = window.AudioContext||window.webkitAudioContext;
+      if(AC) this.ctx = new AC();
+    }
     if(this.ctx && this.ctx.state==='suspended') this.ctx.resume();
   },
   tone(f,d,type,v,slide,when){
@@ -112,6 +132,7 @@ const Sfx = {
   lose(){ this.tone(330,0.5,'sawtooth',0.14,-200); this.tone(196,0.6,'sawtooth',0.11,-90,0.2); }
 };
 document.addEventListener('pointerdown', ()=>Sfx.ensure());
+
 const CHARS = [
   {name:'ÇAYLAK',     skin:'#ffd23f', shirt:'#31a2ff', pants:'#274b7a', cost:0},
   {name:'NİNJA',      skin:'#f2f2f2', shirt:'#23272e', pants:'#23272e', cost:60},
@@ -120,9 +141,10 @@ const CHARS = [
   {name:'ROBO-PANDA', skin:'#ffffff', shirt:'#15181d', pants:'#15181d', cost:260},
   {name:'ALTIN KRAL', skin:'#ffd700', shirt:'#ffffff', pants:'#c0392b', cost:400}
 ];
+
 function avatarDOM(c){
   return '<div class="avo" style="--skin:'+c.skin+';--shirt:'+c.shirt+';--pants:'+c.pants+'">'+
     '<div class="av-head"><div class="av-eye l"></div><div class="av-eye r"></div><div class="av-smile"></div></div>'+
     '<div class="av-row"><div class="av-arm"></div><div class="av-torso"></div><div class="av-arm"></div></div>'+
     '<div class="av-row2"><div class="av-leg"></div><div class="av-leg"></div></div></div>';
-   }
+      }
