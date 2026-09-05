@@ -275,7 +275,7 @@ const FX = {
 /* ─── HUD ─── */
 const HUD = {
   toastT:null, bigT:null,
-  show(v){ const el=$('hud-stats'); if(el) el.classList.toggle('hidden',!v); },
+  show(v){ const el=$('hud'); if(el) el.classList.toggle('hidden',!v); },
   lobby(){
     const t=$('hud-title'); if(t) t.textContent='🏝️ LOBİ';
     this.heartsHide(); this.statHide(); this.timerHide(); this.boss(null);
@@ -1192,6 +1192,7 @@ const Engine = {
     HUD.game(meta);
     HUD.setControls(meta.controls!==false);
     meta.enter(this.makeApi(meta));
+    /* KAMERA FİX: meta.enter() SONRASI player pos okunuyor */
     const P=this.player.pos;
     const cp=Math.cos(this.camPitch), sp=Math.sin(this.camPitch);
     this.camera.position.set(
@@ -1265,7 +1266,7 @@ const Engine = {
     else Sfx.lose();
     const nb=Store.setBest(this.currentMeta.id, score);
     if(coins>0) Store.addCoins(coins);
-    Store.addPlay(this.currentMeta.id);
+    if(Store.addPlay) Store.addPlay(this.currentMeta.id);
     HUD.coins();
     Events.emit('result',{win:win,score:score,coins:coins,msg:msg||'',
       name:this.currentMeta.name,emoji:this.currentMeta.emoji,
