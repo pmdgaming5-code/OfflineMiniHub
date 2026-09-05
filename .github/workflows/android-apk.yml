@@ -16,6 +16,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate JavaScript
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const vm=require('vm');
+          const files=fs.readdirSync('js').filter(f=>f.endsWith('.js')).sort().map(f=>'js/'+f);
+          for(const file of files){
+            try{ new vm.Script(fs.readFileSync(file,'utf8'),{filename:file}); }
+            catch(err){ console.error('\nJavaScript syntax error in '+file+'\n'+err.stack); process.exit(1); }
+          }
+          console.log('Validated '+files.length+' JavaScript files.');
+          NODE
+      - name: Validate HTML IDs and required scripts
+        run: |
+          python - <<'PY'
+          import re
+          html=open('index.html',encoding='utf-8').read()
+          ids=re.findall(r'\bid=["\']([^"\']+)["\']',html)
+          dup=sorted({x for x in ids if ids.count(x)>1})
+          if dup:
+              raise SystemExit('Duplicate HTML ids: '+', '.join(dup))
+          required=['js/core.js','js/chat.js','js/engine.js','js/games-core.js','js/games-pack1.js','js/games-pack2.js','js/games-pack3.js','js/games-pack4.js','js/main.js','js/runtime-fixes.js']
+          missing=[p for p in required if f'src="{p}"' not in html]
+          if missing:
+              raise SystemExit('Missing script tags: '+', '.join(missing))
+          if 'roblox.css' not in html:
+              raise SystemExit('roblox.css is not loaded')
+          print('HTML validation passed.')
+          PY
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
