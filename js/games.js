@@ -268,7 +268,7 @@ defGame({
   }
 });
 
-/* ============ 6) BUTTON TYCOON ============ */
+/* ============ 6) BUTTON TYCOON (games-extra.js'te MEGA'ya override edilecek) ============ */
 defGame({
   id:'tycoon',name:'BUTTON TYCOON',emoji:'🏭',color:'#2ed573',
   desc:'Butonlara bas, üreteçler kur, $500 yap!',
