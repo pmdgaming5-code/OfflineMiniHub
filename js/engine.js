@@ -555,9 +555,10 @@ const Engine = {
     return g;
   },
 
+  // YENİ:
   clearPet(){
-    if(this.pet){
-      this.scene.remove(this.pet.grp);
+    if(this.pet && this.pet.grp){
+      if(this.pet.grp.parent) this.pet.grp.parent.remove(this.pet.grp);
       this.pet=null;
     }
   },
@@ -862,12 +863,15 @@ const Engine = {
     }
   },
 
+  // YENİ:
   updateCamera(dt){
     const P=this.player.pos;
     if(this.camMode!==2){
       const hs=Math.hypot(P.vel.x,P.vel.z);
-      if(hs>0.8) this.followYaw=Math.atan2(P.vel.x,P.vel.z);
-      this.camYaw=lerpAngle(this.camYaw,this.followYaw+Math.PI,1-Math.exp(-2.5*dt));
+      // FIX: Her zaman followYaw'u hesapla, hız düşükse de güncelle
+      const targetYaw = hs>0.8 ? Math.atan2(P.vel.x,P.vel.z) : this.followYaw;
+      if(hs>0.8) this.followYaw = targetYaw;
+      this.camYaw=lerpAngle(this.camYaw, this.followYaw+Math.PI, 1-Math.exp(-4*dt));
     }
     const cp=Math.cos(this.camPitch), sp=Math.sin(this.camPitch);
     const d=this.camDist;
@@ -876,7 +880,11 @@ const Engine = {
       P.y+sp*d+1.2,
       P.z+Math.cos(this.camYaw)*cp*d
     );
-    if(this.snapCam){ this.camera.position.copy(target); this.snapCam=false; }
+    if(this.snapCam){ 
+      this.camera.position.copy(target); 
+      this.camera.lookAt(P.x,P.y+1.2,P.z);
+      this.snapCam=false; 
+    }
     else this.camera.position.lerp(target,1-Math.exp(-8*dt));
     let sh=null;
     if(this.shakeT>0){
@@ -1008,6 +1016,7 @@ const Engine = {
     };
   },
 
+  // YENİ:
   startGame(meta){
     if(!meta) return;
     this.runId++;
@@ -1016,15 +1025,33 @@ const Engine = {
     this.inputLock=(meta.controls===false);
     this.playerOn=true;
     this.punch=0; this.player.iframe=0; this.player.speed=7;
-    this.camMode=0; this.camDist=9; this.camPitch=0.35;
+    
+    // FIX: Kamera sıfırla
+    this.camMode=0; 
+    this.camDist=9; 
+    this.camPitch=0.35;
+    this.camYaw=0;
+    this.followYaw=0;
+    
     W.clear();
     this.mode='game'; this.currentMeta=meta;
     HUD.game(meta);
     HUD.setControls(meta.controls!==false);
     meta.enter(this.makeApi(meta));
+  
+    // FIX: Kamera pozisyonunu direkt ayarla (snapCam beklemek yerine)
+    const P=this.player.pos;
+    const cp=Math.cos(this.camPitch), sp=Math.sin(this.camPitch);
+    this.camera.position.set(
+      P.x+Math.sin(this.camYaw)*cp*this.camDist,
+      P.y+sp*this.camDist+1.2,
+      P.z+Math.cos(this.camYaw)*cp*this.camDist
+    );
+    this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
   },
 
+  // YENİ:
   toLobby(){
     this.finished=false; this.gameUpdate=null; this.onFallCb=null;
     this.noMove=false; this.inputLock=false;
@@ -1034,7 +1061,24 @@ const Engine = {
     this.playerGroup.visible=true;
     this.spawnPlayer(this.spawnPt.x,this.spawnPt.y,this.spawnPt.z,false);
     HUD.lobby(); HUD.show(true); HUD.setControls(true);
-    this.camMode=0; this.camDist=9; this.snapCam=true;
+    
+    // FIX: Kamera sıfırla
+    this.camMode=0; 
+    this.camDist=9; 
+    this.camPitch=0.35;
+    this.camYaw=0;
+    this.followYaw=0;
+  
+    // FIX: Kamera pozisyonunu direkt ayarla
+    const P=this.player.pos;
+    const cp=Math.cos(this.camPitch), sp=Math.sin(this.camPitch);
+    this.camera.position.set(
+      P.x+Math.sin(this.camYaw)*cp*this.camDist,
+      P.y+sp*this.camDist+1.2,
+      P.z+Math.cos(this.camYaw)*cp*this.camDist
+    );
+    this.camera.lookAt(P.x,P.y+1.2,P.z);
+    this.snapCam=true;
   },
 
   idleLobby(){
@@ -1045,11 +1089,29 @@ const Engine = {
     this.playerGroup.visible=false;
   },
 
+    // YENİ:
   enterLobby(){
     this.idle=false; this.inputLock=false;
     this.playerGroup.visible=true;
     this.spawnPlayer(this.spawnPt.x,this.spawnPt.y,this.spawnPt.z,false);
     HUD.lobby(); HUD.show(true); HUD.setControls(true);
+    
+    // FIX: Kamera sıfırla
+    this.camMode=0;
+    this.camDist=9;
+    this.camPitch=0.35;
+    this.camYaw=0;
+    this.followYaw=0;
+    
+    // FIX: Kamera pozisyonunu direkt ayarla
+    const P=this.player.pos;
+    const cp=Math.cos(this.camPitch), sp=Math.sin(this.camPitch);
+    this.camera.position.set(
+      P.x+Math.sin(this.camYaw)*cp*this.camDist,
+      P.y+sp*this.camDist+1.2,
+      P.z+Math.cos(this.camYaw)*cp*this.camDist
+    );
+    this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
   },
 
