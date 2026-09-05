@@ -1,7 +1,18 @@
+/* ============================================================
+   engine.js — Motor: Roblox tarzı grafikler, fizik, giriş,
+   kamera, HUD, FX, BOTLAR + kozmetik/market entegrasyonu
+   ============================================================ */
 'use strict';
+
 const GRAV = -30;
 const HX = 0.45, HY = 0.95, HZ = 0.45;
-function lerpAngle(a,b,t){let d=(b-a)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return a+d*t;}
+
+function lerpAngle(a,b,t){
+  let d=(b-a)%(Math.PI*2);
+  if(d>Math.PI)d-=Math.PI*2;
+  if(d<-Math.PI)d+=Math.PI*2;
+  return a+d*t;
+}
 
 const keys = {};
 const Input = {
@@ -33,6 +44,7 @@ function bindInput(){
     keys[e.code]=true;
   });
   window.addEventListener('keyup', e=>{ keys[e.code]=false; });
+
   const zone=$('joy-zone'), base=$('joy-base'), thumb=$('joy-thumb');
   let joyId=null; const R=52;
   function joyMove(e){
@@ -57,6 +69,7 @@ function bindInput(){
   };
   zone.addEventListener('pointerup', joyEnd);
   zone.addEventListener('pointercancel', joyEnd);
+
   function holdBtn(el, down, up){
     el.addEventListener('pointerdown', e=>{ e.preventDefault();
       try{ el.setPointerCapture(e.pointerId); }catch(err){} down(); });
@@ -65,6 +78,7 @@ function bindInput(){
   }
   holdBtn($('btn-jump'), ()=>{ Input.btnJump=true; Input.jumpBuf=0.18; }, ()=>{ Input.btnJump=false; });
   holdBtn($('btn-act'),  ()=>{ Input.btnAct=true;  Input.actionBuf=0.22;}, ()=>{ Input.btnAct=false; });
+
   document.addEventListener('contextmenu', e=>e.preventDefault());
   document.addEventListener('visibilitychange', ()=>{ Engine._last=0; });
   bindCamera();
@@ -287,7 +301,6 @@ const W = {
     Engine.setTool(null);
   }
 };
-
 const Engine = {
   mode:'boot', idle:true, playerOn:false,
   runId:0, finished:false, noMove:false, inputLock:true,
@@ -296,7 +309,6 @@ const Engine = {
   colliders:[], movers:[], items:[], interact:[],
   spawnPt:{x:0,y:HY,z:0},
   GEO:null, _matC:null, _matB:null, _studTex:null, _studMat:null,
-  defCamY:5.4, defCamZ:9,
   trailType:null, trailT:0, trailPs:[],
   fxHalo:null, fxAura:null, toolObj:null, _tool:null,
   pet:null,
@@ -555,7 +567,6 @@ const Engine = {
     return g;
   },
 
-  // YENİ:
   clearPet(){
     if(this.pet && this.pet.grp){
       if(this.pet.grp.parent) this.pet.grp.parent.remove(this.pet.grp);
@@ -572,8 +583,10 @@ const Engine = {
     this.scene.add(new THREE.HemisphereLight(0xffffff,0x8fa3c7,1.05));
     const dl=new THREE.DirectionalLight(0xfff2d6,0.75);
     dl.position.set(12,24,10); this.scene.add(dl);
+
     this.GEO={ box:new THREE.BoxGeometry(1,1,1), bit:new THREE.BoxGeometry(0.17,0.17,0.17) };
     this._matC={}; this._matB={}; this._studTex={}; this._studMat={};
+
     this.player={
       pos:new THREE.Vector3(0,HY,7), vel:new THREE.Vector3(), prev:new THREE.Vector3(),
       onGround:false, coyote:0, groundC:null, iframe:0, speed:7, jumpV:12.4
@@ -581,16 +594,19 @@ const Engine = {
     this.playerGroup=new THREE.Group();
     this.playerGroup.visible=false;
     this.scene.add(this.playerGroup);
+
     this.blob=new THREE.Mesh(new THREE.CircleGeometry(0.55,20),
       new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.28,depthWrite:false}));
     this.blob.rotation.x=-Math.PI/2; this.blob.visible=false;
     this.scene.add(this.blob);
+
     const self=this;
     const resize=()=>{
       const w=window.innerWidth, h=window.innerHeight;
       self.renderer.setSize(w,h); self.camera.aspect=w/h; self.camera.updateProjectionMatrix();
     };
     window.addEventListener('resize',resize); resize();
+
     bindInput();
     requestAnimationFrame(this.frame.bind(this));
   },
@@ -602,9 +618,12 @@ const Engine = {
     if(dt>0.05) dt=0.05;
     if(dt<=0) return;
     this.time+=dt;
+
     Input.update(dt);
+
     if(this.mode==='lobby') this.lobbyUpdate(dt);
     else if(this.mode==='game' && this.gameUpdate && !this.finished) this.gameUpdate(dt);
+
     this.updateMovers(dt);
     if(this.playerOn) this.stepPlayer(dt);
     this.checkTriggers();
@@ -614,6 +633,7 @@ const Engine = {
     FX.update(dt);
     this.updateTrail(dt);
     this.updateAvatar(dt);
+
     if(this.idle){
       this.renderer.render(this.scene,this.camera);
     } else {
@@ -685,7 +705,6 @@ const Engine = {
     this.limbs.armR.add(s); s.position.set(0,-0.6,0.12);
     this.toolObj=s;
   },
-  setSword(on){ this.setTool(on ? 'sword' : null); },
 
   stepPlayer(dt){
     const P=this.player;
@@ -700,12 +719,14 @@ const Engine = {
       P.vel.z=U.approach(P.vel.z, rz*P.speed, acc*dt);
     }
     P.vel.y=Math.max(-34, P.vel.y+GRAV*dt);
+
     if(!this.inputLock){
       if(Input.jumpBuf<=0 && (Input.btnJump||keys['Space']) && P.onGround) Input.jumpBuf=0.06;
       if(Input.jumpBuf>0 && (P.onGround||P.coyote>0)){
         P.vel.y=P.jumpV; Input.jumpBuf=0; P.coyote=0; P.groundC=null; Sfx.jump();
       }
     }
+
     P.onGround=false; let landed=null;
     const steps=2, h=dt/steps;
     for(let i=0;i<steps;i++){
@@ -863,12 +884,10 @@ const Engine = {
     }
   },
 
-  // YENİ:
   updateCamera(dt){
     const P=this.player.pos;
     if(this.camMode!==2){
       const hs=Math.hypot(P.vel.x,P.vel.z);
-      // FIX: Her zaman followYaw'u hesapla, hız düşükse de güncelle
       const targetYaw = hs>0.8 ? Math.atan2(P.vel.x,P.vel.z) : this.followYaw;
       if(hs>0.8) this.followYaw = targetYaw;
       this.camYaw=lerpAngle(this.camYaw, this.followYaw+Math.PI, 1-Math.exp(-4*dt));
@@ -880,10 +899,10 @@ const Engine = {
       P.y+sp*d+1.2,
       P.z+Math.cos(this.camYaw)*cp*d
     );
-    if(this.snapCam){ 
-      this.camera.position.copy(target); 
+    if(this.snapCam){
+      this.camera.position.copy(target);
       this.camera.lookAt(P.x,P.y+1.2,P.z);
-      this.snapCam=false; 
+      this.snapCam=false;
     }
     else this.camera.position.lerp(target,1-Math.exp(-8*dt));
     let sh=null;
@@ -1016,7 +1035,6 @@ const Engine = {
     };
   },
 
-  // YENİ:
   startGame(meta){
     if(!meta) return;
     this.runId++;
@@ -1025,21 +1043,13 @@ const Engine = {
     this.inputLock=(meta.controls===false);
     this.playerOn=true;
     this.punch=0; this.player.iframe=0; this.player.speed=7;
-    
-    // FIX: Kamera sıfırla
-    this.camMode=0; 
-    this.camDist=9; 
-    this.camPitch=0.35;
-    this.camYaw=0;
-    this.followYaw=0;
-    
+    this.camMode=0; this.camDist=9; this.camPitch=0.35;
+    this.camYaw=0; this.followYaw=0;
     W.clear();
     this.mode='game'; this.currentMeta=meta;
     HUD.game(meta);
     HUD.setControls(meta.controls!==false);
     meta.enter(this.makeApi(meta));
-  
-    // FIX: Kamera pozisyonunu direkt ayarla (snapCam beklemek yerine)
     const P=this.player.pos;
     const cp=Math.cos(this.camPitch), sp=Math.sin(this.camPitch);
     this.camera.position.set(
@@ -1051,7 +1061,6 @@ const Engine = {
     this.snapCam=true;
   },
 
-  // YENİ:
   toLobby(){
     this.finished=false; this.gameUpdate=null; this.onFallCb=null;
     this.noMove=false; this.inputLock=false;
@@ -1061,15 +1070,8 @@ const Engine = {
     this.playerGroup.visible=true;
     this.spawnPlayer(this.spawnPt.x,this.spawnPt.y,this.spawnPt.z,false);
     HUD.lobby(); HUD.show(true); HUD.setControls(true);
-    
-    // FIX: Kamera sıfırla
-    this.camMode=0; 
-    this.camDist=9; 
-    this.camPitch=0.35;
-    this.camYaw=0;
-    this.followYaw=0;
-  
-    // FIX: Kamera pozisyonunu direkt ayarla
+    this.camMode=0; this.camDist=9; this.camPitch=0.35;
+    this.camYaw=0; this.followYaw=0;
     const P=this.player.pos;
     const cp=Math.cos(this.camPitch), sp=Math.sin(this.camPitch);
     this.camera.position.set(
@@ -1089,21 +1091,13 @@ const Engine = {
     this.playerGroup.visible=false;
   },
 
-    // YENİ:
   enterLobby(){
     this.idle=false; this.inputLock=false;
     this.playerGroup.visible=true;
     this.spawnPlayer(this.spawnPt.x,this.spawnPt.y,this.spawnPt.z,false);
     HUD.lobby(); HUD.show(true); HUD.setControls(true);
-    
-    // FIX: Kamera sıfırla
-    this.camMode=0;
-    this.camDist=9;
-    this.camPitch=0.35;
-    this.camYaw=0;
-    this.followYaw=0;
-    
-    // FIX: Kamera pozisyonunu direkt ayarla
+    this.camMode=0; this.camDist=9; this.camPitch=0.35;
+    this.camYaw=0; this.followYaw=0;
     const P=this.player.pos;
     const cp=Math.cos(this.camPitch), sp=Math.sin(this.camPitch);
     this.camera.position.set(
@@ -1130,6 +1124,9 @@ const Engine = {
   }
 };
 
+/* ============================================================
+   BOT SİSTEMİ
+   ============================================================ */
 const Bots = {
   all:[],
   names:['xX_Pro_TR_Xx','NoobMaster61','BlokUstası','KralCan_34','Elmas_Efe','RoboAyşe',
