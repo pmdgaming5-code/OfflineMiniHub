@@ -301,6 +301,7 @@ const W = {
     Engine.setTool(null);
   }
 };
+
 const Engine = {
   mode:'boot', idle:true, playerOn:false,
   runId:0, finished:false, noMove:false, inputLock:true,
@@ -919,7 +920,14 @@ const Engine = {
   hurtFx(){ const el=$('dmgflash'); el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); },
   fadeDo(cb){
     const f=$('fade'); f.classList.add('on');
-    setTimeout(()=>{ cb(); setTimeout(()=>f.classList.remove('on'),80); },230);
+    setTimeout(()=>{
+      cb();
+      // FIX: Force render after callback to prevent "frozen" canvas
+      if(this.renderer && this.scene && this.camera){
+        this.renderer.render(this.scene, this.camera);
+      }
+      setTimeout(()=>f.classList.remove('on'),80);
+    },230);
   },
 
   buildLobby(){
@@ -1059,6 +1067,8 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
+    // FIX: Force render to prevent "frozen" canvas
+    this.renderer.render(this.scene, this.camera);
   },
 
   toLobby(){
@@ -1081,6 +1091,8 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
+    // FIX: Force render to prevent "frozen" canvas
+    this.renderer.render(this.scene, this.camera);
   },
 
   idleLobby(){
@@ -1107,6 +1119,8 @@ const Engine = {
     );
     this.camera.lookAt(P.x,P.y+1.2,P.z);
     this.snapCam=true;
+    // FIX: Force render to prevent "frozen" canvas
+    this.renderer.render(this.scene, this.camera);
   },
 
   finish(win,score,coins,msg){
