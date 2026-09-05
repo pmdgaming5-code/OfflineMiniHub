@@ -262,3 +262,10 @@ canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-ac
   #joy-base{width:110px;height:110px}
   #joy-thumb{width:48px;height:48px}
         }
+/* ═══ KAMERA SİSTEMİ ═══ */
+#cam-zone{position:fixed;inset:0;z-index:3;touch-action:none;pointer-events:none}
+#controls:not(.hidden) ~ #cam-zone{pointer-events:auto}
+#btn-cam{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;width:52px;height:52px;border-radius:14px;font-size:22px;background:#8a5cf6;color:#fff;border:4px solid var(--ink);box-shadow:0 5px 0 var(--ink);z-index:26;pointer-events:auto;touch-action:manipulation}
+#btn-cam:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+/* Fade transition'u çok kısa yaparak "donma" hissini ortadan kaldır */
+#fade{transition:opacity .08s!important}
