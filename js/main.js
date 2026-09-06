@@ -8,7 +8,7 @@ let gameFilter='Tümü';
 let shopFilter='Tümü';
 let shopReturn='screen-home';
 
-const SCREENS=['screen-home','screen-chars','screen-games','screen-shop','screen-how','screen-over'];
+const SCREENS=['screen-home','screen-avatar','screen-games','screen-shop','screen-how','screen-over'];
 
 function showOnly(id){
   SCREENS.forEach(s=>{ const el=$(s); if(el) el.classList.add('hidden'); });
@@ -110,9 +110,9 @@ function renderGames(){
     card.style.setProperty('--gc',g.color);
     card.style.animationDelay=(i*0.03)+'s';
     card.innerHTML=
-      '<div class="gc-ico">'+g.emoji+'</div>'+
-      '<div class="gc-name">'+g.name+'</div>'+
-      '<div class="gc-desc">'+g.desc+'</div>'+
+      '<div class="gc-ico">'+g.emoji+'</div>'+ 
+      '<div class="gc-name">'+g.name+'</div>'+ 
+      '<div class="gc-desc">'+g.desc+'</div>'+ 
       '<div class="gc-best">'+'⭐'.repeat(g.diff)+' | 🏅 '+(best||'—')+' | '+plays+' oynama</div>';
     card.addEventListener('click',()=>{
       Sfx.click();
@@ -149,9 +149,9 @@ function renderShop(){
     card.className='charcard'+(equipped?' eq':'')+(!owned&&Store.data.coins<it.cost?' poor':'');
     card.style.animationDelay=(i*0.03)+'s';
     card.innerHTML=
-      '<div class="shop-ico">'+it.icon+'</div>'+
-      '<div class="cc-name">'+it.name+'</div>'+
-      '<div class="shop-slot">'+(SLOT_NAMES[it.slot]||it.slot)+' • '+it.desc+'</div>'+
+      '<div class="shop-ico">'+it.icon+'</div>'+ 
+      '<div class="cc-name">'+it.name+'</div>'+ 
+      '<div class="shop-slot">'+(SLOT_NAMES[it.slot]||it.slot)+' • '+it.desc+'</div>'+ 
       (owned
         ?'<button class="cc-btn'+(equipped?' sel':'')+'">'+(equipped?'✔ TAKILI':'TAK')+'</button>'
         :'<button class="cc-btn lock">🪙 '+it.cost+'</button>');
@@ -198,7 +198,7 @@ function showResult(r){
   const om=$('over-msg'); if(om) om.textContent=(r.msg?r.msg+' • ':'')+r.name;
   const os=$('over-stats');
   if(os) os.innerHTML=
-    '<div>⭐ Skor: <b>'+r.score+'</b></div>'+
+    '<div>⭐ Skor: <b>'+r.score+'</b></div>'+ 
     '<div>🏅 En iyi: <b>'+r.best+'</b> '+(r.newBest?'<span class="nb">YENİ REKOR!</span>':'')+'</div>';
   const oc=$('over-coins'); if(oc) oc.textContent='+'+r.coins+' 🪙';
   showOnly('screen-over');
@@ -217,7 +217,7 @@ function wireEvents(){
     });
   });
   const chars=$('btn-chars');
-  if(chars) chars.addEventListener('click',()=>{ Sfx.click(); renderChars(); showOnly('screen-chars'); });
+  if(chars) chars.addEventListener('click',()=>{ Sfx.click(); renderChars(); showOnly('screen-avatar'); });
   const shop=$('btn-shop');
   if(shop) shop.addEventListener('click',()=>{ Sfx.click(); shopReturn='screen-home'; renderShop(); showOnly('screen-shop'); });
   const howto=$('btn-howto');
@@ -260,7 +260,7 @@ function wireEvents(){
   const retry=$('btn-retry');
   if(retry) retry.addEventListener('click',()=>{
     Sfx.click();
-    Engine.fadeDo(()=>{ showOnly(null); if(lastGameId)startGameById(lastGameId); });
+    Engine.fadeDo(()=>{ showOnly(null); if(lastGameId)startGameById(lastGameId,{skipIntro:true}); });
   });
   const lobbyBtn=$('btn-lobby');
   if(lobbyBtn) lobbyBtn.addEventListener('click',()=>{
