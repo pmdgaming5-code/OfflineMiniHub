@@ -41,13 +41,16 @@ jobs:
           dup=sorted({x for x in ids if ids.count(x)>1})
           if dup:
               raise SystemExit('Duplicate HTML ids: '+', '.join(dup))
-          required=['js/core.js','js/chat.js','js/engine.js','js/games-core.js','js/games-pack1.js','js/games-pack2.js','js/games-pack3.js','js/games-pack4.js','js/main.js','js/runtime-fixes.js']
+          required=['js/core.js','js/chat.js','js/engine.js','js/games-core.js','js/games-pack1.js','js/games-pack2.js','js/games-pack3.js','js/games-pack4.js','js/main.js','js/runtime-fixes.js','js/camera-follow-fix.js','js/polish-v3.js']
           missing=[p for p in required if f'src="{p}"' not in html]
           if missing:
               raise SystemExit('Missing script tags: '+', '.join(missing))
           if 'roblox.css' not in html:
               raise SystemExit('roblox.css is not loaded')
-          print('HTML validation passed.')
+          polish=open('js/polish-v3.js',encoding='utf-8').read()
+          if 'lobbyFloorCount=5' not in polish or 'game-intro' not in polish:
+              raise SystemExit('polish-v3.js is incomplete')
+          print('HTML/polish validation passed.')
           PY
       - name: Set up Java 17
         uses: actions/setup-java@v4
