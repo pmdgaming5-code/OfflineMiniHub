@@ -9,87 +9,20 @@
 <link rel="stylesheet" href="roblox.css">
 </head>
 <body>
-<div id="loading">
-  <div class="load-logo">BLOX<span>HUB</span></div>
-  <div class="load-bar"><div id="load-fill"></div></div>
-  <div id="load-text">Yükleniyor...</div>
-</div>
-<canvas id="game"></canvas>
-<div id="cam-zone" aria-hidden="true"></div>
-
-<div id="topbar" class="hidden">
-  <div class="tb-left">
-    <button id="btn-home" class="tb-btn" title="Ana Menü">🏠</button>
-    <div class="tb-logo">BLOX<span>HUB</span></div>
-  </div>
-  <div class="tb-center"><div id="hud-title" class="hud-game-title">LOBİ</div></div>
-  <div class="tb-right">
-    <div class="robux-pill" title="Coin"><span class="coin-ico">🪙</span><span id="hud-coins">0</span></div>
-    <button id="btn-shop-top" class="tb-btn" title="Market">🛒</button>
-    <button id="btn-av-top" class="tb-btn" title="Avatar">🧍</button>
-    <button id="btn-sound" class="tb-btn" title="Ses">🔊</button>
-  </div>
-</div>
-<div id="hud-stats" class="hidden"><div id="hud-hearts"></div><div id="hud-stat" class="hud-pill"></div><div id="hud-timer" class="hud-pill timer"></div></div>
-<div id="bossbar" class="hidden"><div id="bossfill"></div><span id="bossname">BOSS</span></div>
+<div id="loading"><div class="load-logo">BLOX<span>HUB</span></div><div class="load-bar"><div id="load-fill"></div></div><div id="load-text">Yükleniyor...</div></div>
+<canvas id="game"></canvas><div id="cam-zone" aria-hidden="true"></div>
+<div id="topbar" class="hidden"><div class="tb-left"><button id="btn-home" class="tb-btn" title="Ana Menü">🏠</button><div class="tb-logo">BLOX<span>HUB</span></div></div><div class="tb-center"><div id="hud-title" class="hud-game-title">LOBİ</div></div><div class="tb-right"><div class="robux-pill" title="Coin"><span class="coin-ico">🪙</span><span id="hud-coins">0</span></div><button id="btn-shop-top" class="tb-btn" title="Market">🛒</button><button id="btn-av-top" class="tb-btn" title="Avatar">🧍</button><button id="btn-sound" class="tb-btn" title="Ses">🔊</button></div></div>
+<div id="hud-stats" class="hidden"><div id="hud-hearts"></div><div id="hud-stat" class="hud-pill"></div><div id="hud-timer" class="hud-pill timer"></div></div><div id="bossbar" class="hidden"><div id="bossfill"></div><span id="bossname">BOSS</span></div>
 <div id="toast"></div><div id="bigprompt" class="hidden"></div><div id="interact" class="hidden"></div>
-
-<div id="controls" class="hidden">
-  <div id="joy-zone"><div id="joy-base"><div id="joy-thumb"></div></div></div>
-  <div id="btn-zone"><button id="btn-act" class="cbtn act">✋</button><button id="btn-jump" class="cbtn jump">⤴</button></div>
-  <button id="btn-cam" class="cbtn cambtn" title="Kamera Modu">🎥</button>
-</div>
-
-<div id="clickerUI" class="hidden">
-  <div class="clk-top"><span class="clk-stat">💪 <b id="clk-power">0</b></span><span class="clk-stat">⭐ Sv <b id="clk-lvl">1</b></span><span class="clk-stat">⏱ <b id="clk-time">60</b></span></div>
-  <div class="clk-shop"><button id="clk-up1" class="clk-up">GÜÇ x2<small id="clk-up1c">-60 💪</small></button><button id="clk-up2" class="clk-up">OTO-TIK<small id="clk-up2c">-150 💪</small></button></div>
-  <button id="clk-btn">💥</button>
-</div>
-
-<div id="chat-box" class="hidden">
-  <button id="chat-toggle" title="Sohbet">💬</button>
-  <div id="chat-panel"><div id="chat-messages"></div><div id="chat-input-area"><input type="text" id="chat-input" placeholder="Bir şey yaz..." maxlength="120" autocomplete="off"><button id="chat-send">➤</button></div></div>
-</div>
-
-<div id="screen-home" class="screen hidden">
-  <div class="home-shell">
-    <aside class="home-side">
-      <div class="home-profile"><div id="menu-avatar" class="menu-avatar"></div><div><b>OYUNCU</b><small>ÇAYLAK</small></div></div>
-      <button id="btn-games-home" class="home-nav active"><span>🎮</span> Oyunlar</button>
-      <button id="btn-av-home" class="home-nav"><span>🧍</span> Avatar</button>
-      <button id="btn-shop-home" class="home-nav"><span>🛒</span> Market</button>
-      <button id="btn-how-home" class="home-nav"><span>❓</span> Yardım</button>
-    </aside>
-    <main class="home-main">
-      <div class="home-badge">50 MİNİ OYUN • ÇEVRİMDIŞI • BOTLAR</div>
-      <div class="hero-logo">BLOX<span>HUB</span></div>
-      <p class="home-tagline">Arkadaşların olmadan da dolu dolu oyun.</p>
-      <button id="btn-play" class="btn-primary big">▶ OYNA</button>
-      <div class="home-quick"><button id="btn-games" class="btn-secondary">🎮 TÜM OYUNLAR</button><button id="btn-shop" class="btn-secondary">🛒 MARKET</button></div>
-    </main>
-    <div class="home-wallet">🪙 <b id="m-coins">0</b></div>
-  </div>
-</div>
-
+<div id="controls" class="hidden"><div id="joy-zone"><div id="joy-base"><div id="joy-thumb"></div></div></div><div id="btn-zone"><button id="btn-act" class="cbtn act">✋</button><button id="btn-jump" class="cbtn jump">⤴</button></div><button id="btn-cam" class="cbtn cambtn" title="Kamera Modu">🎥</button></div>
+<div id="clickerUI" class="hidden"><div class="clk-top"><span class="clk-stat">💪 <b id="clk-power">0</b></span><span class="clk-stat">⭐ Sv <b id="clk-lvl">1</b></span><span class="clk-stat">⏱ <b id="clk-time">60</b></span></div><div class="clk-shop"><button id="clk-up1" class="clk-up">GÜÇ x2<small id="clk-up1c">-60 💪</small></button><button id="clk-up2" class="clk-up">OTO-TIK<small id="clk-up2c">-150 💪</small></button></div><button id="clk-btn">💥</button></div>
+<div id="chat-box" class="hidden"><button id="chat-toggle" title="Sohbet">💬</button><div id="chat-panel"><div id="chat-messages"></div><div id="chat-input-area"><input type="text" id="chat-input" placeholder="Bir şey yaz..." maxlength="120" autocomplete="off"><button id="chat-send">➤</button></div></div></div>
+<div id="screen-home" class="screen hidden"><div class="home-shell"><aside class="home-side"><div class="home-profile"><div id="menu-avatar" class="menu-avatar"></div><div><b>OYUNCU</b><small>ÇAYLAK</small></div></div><button id="btn-games-home" class="home-nav active"><span>🎮</span> Oyunlar</button><button id="btn-av-home" class="home-nav"><span>🧍</span> Avatar</button><button id="btn-shop-home" class="home-nav"><span>🛒</span> Market</button><button id="btn-how-home" class="home-nav"><span>❓</span> Yardım</button></aside><main class="home-main"><div class="home-badge">50 MİNİ OYUN • ÇEVRİMDIŞI • BOTLAR</div><div class="hero-logo">BLOX<span>HUB</span></div><p class="home-tagline">Arkadaşların olmadan da dolu dolu oyun.</p><button id="btn-play" class="btn-primary big">▶ OYNA</button><div class="home-quick"><button id="btn-games" class="btn-secondary">🎮 TÜM OYUNLAR</button><button id="btn-shop" class="btn-secondary">🛒 MARKET</button></div></main><div class="home-wallet">🪙 <b id="m-coins">0</b></div></div></div>
 <div id="screen-games" class="screen hidden"><div class="scr-head"><button class="btn-back" data-back="home">◀</button><h2>🎮 Oyunlar</h2><div class="scr-coins">🪙 <span id="g-coins">0</span></div></div><div id="game-filters" class="filters"></div><div id="game-grid" class="game-grid"></div></div>
 <div id="screen-avatar" class="screen hidden"><div class="scr-head"><button class="btn-back" data-back="home">◀</button><h2>🧍 Avatarım</h2><div class="scr-coins">🪙 <span id="c-coins">0</span></div></div><div class="av-preview"><div id="avatar-preview-fallback"></div></div><div id="char-grid" class="char-grid"></div></div>
 <div id="screen-shop" class="screen hidden"><div class="scr-head"><button class="btn-back" data-back="home">◀</button><h2>🛒 Market</h2><div class="scr-coins">🪙 <span id="s-coins">0</span></div></div><div id="shop-filters" class="filters"></div><div id="shop-grid" class="shop-grid"></div></div>
 <div id="screen-how" class="screen hidden"><div class="scr-head"><button class="btn-back" data-back="home">◀</button><h2>❓ Nasıl Oynanır?</h2><div></div></div><div class="how-box"><p>🕹️ <b>Hareket:</b> Sol alttaki joystick veya WASD</p><p>⤴ <b>Zıpla:</b> Sağ alttaki tuş veya Boşluk</p><p>✋ <b>Eylem:</b> Etkileşim veya E</p><p>🎥 <b>Kamera:</b> Oyun alanında sürükle / kamera tuşu</p><p>💬 <b>Sohbet:</b> Botlarla konuş</p><p>🪙 <b>Coin:</b> Oyunları oynayarak kazan</p><button id="btn-reset" class="btn-danger">🗑 İlerlemeyi Sıfırla</button></div></div>
 <div id="screen-over" class="screen dim hidden"><div class="over-card"><div id="over-emoji">🏆</div><h2 id="over-title">KAZANDIN!</h2><p id="over-msg"></p><div id="over-stats"></div><div id="over-coins">+0 🪙</div><div class="over-btns"><button id="btn-retry" class="btn-primary">🔁 Tekrar</button><button id="btn-lobby" class="btn-secondary">🏝️ Lobi</button></div></div></div>
 <div id="fade"></div><div id="dmgflash"></div>
-
-<script src="three.min.js"></script>
-<script src="js/core.js"></script>
-<script src="js/chat.js"></script>
-<script src="js/engine.js"></script>
-<script src="js/games-core.js"></script>
-<script src="js/games-pack1.js"></script>
-<script src="js/games-pack2.js"></script>
-<script src="js/games-pack3.js"></script>
-<script src="js/games-pack4.js"></script>
-<script src="js/main.js"></script>
-<script src="js/runtime-fixes.js"></script>
-<script src="js/camera-follow-fix.js"></script>
-<script src="js/polish-v3.js"></script>
-</body>
-</html>
+<script src="three.min.js"></script><script src="js/core.js"></script><script src="js/chat.js"></script><script src="js/engine.js"></script><script src="js/games-core.js"></script><script src="js/games-pack1.js"></script><script src="js/games-pack2.js"></script><script src="js/games-pack3.js"></script><script src="js/games-pack4.js"></script><script src="js/main.js"></script><script src="js/runtime-fixes.js"></script><script src="js/camera-follow-fix.js"></script><script src="js/polish-v3.js"></script><script src="js/polish-v3-init.js"></script>
+</body></html>
